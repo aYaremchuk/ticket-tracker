@@ -164,13 +164,32 @@ RSpec.describe(Ticket, type: :model) do
       end
     end
 
-    it "does NOT advance modified_at when saving the same values" do
+    it "does NOT advance modified_at when updating with the same values" do
       ticket.reload
       original = ticket.modified_at
       travel(1.second) do
-        # Save with the exact same attributes — no real change.
-        ticket.save!
+        # Explicitly assign the current values back — Rails still issues no
+        # UPDATE (nothing dirty) and modified_at must not advance.
+        ticket.update!(title: ticket.title)
         expect(ticket.reload.modified_at.to_i).to(eq(original.to_i))
+      end
+    end
+
+    it "advances modified_at when team_id changes" do
+      other_team = create(:team)
+      original = ticket.modified_at
+      travel(1.second) do
+        ticket.update!(team_id: other_team.id)
+        expect(ticket.modified_at).to(be > original)
+      end
+    end
+
+    it "advances modified_at when epic_id changes" do
+      epic = create(:epic, team: team)
+      original = ticket.modified_at
+      travel(1.second) do
+        ticket.update!(epic_id: epic.id)
+        expect(ticket.modified_at).to(be > original)
       end
     end
 

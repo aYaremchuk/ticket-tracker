@@ -9,7 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client.ts'
-import { addComment, listComments } from '../api/comments.ts'
+import { addComment, deleteComment, listComments, updateComment } from '../api/comments.ts'
 import { ticketQueryKey } from './useTickets.ts'
 import type { Comment, Ticket } from '../types/api.ts'
 
@@ -76,6 +76,51 @@ export function useAddComment(ticketId: string) {
       // don't go stale (comments don't bump modified_at, so no refetch happens).
       queryClient.setQueryData<Ticket>(ticketQueryKey(ticketId), (prev) =>
         prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev,
+      )
+    },
+  })
+}
+
+/**
+ * Edit a comment body (PATCH /api/comments/:id).
+ * Author-only — the UI only renders the control when comment.author.id === currentUser.id.
+ * On success, updates the comment in the cached list directly (no ticket invalidation).
+ */
+export function useUpdateComment(ticketId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation<Comment, Error, { id: string; body: string }>({
+    mutationFn: ({ id, body }) => updateComment(id, body),
+    onSuccess: (updatedComment) => {
+      queryClient.setQueryData<Comment[]>(
+        commentsQueryKey(ticketId),
+        (prev) =>
+          prev?.map((c) => (c.id === updatedComment.id ? updatedComment : c)) ?? prev,
+      )
+    },
+  })
+}
+
+/**
+ * Delete a comment (DELETE /api/comments/:id).
+ * Author-only — the UI only renders the control when comment.author.id === currentUser.id.
+ * On success, removes the comment from the cached list and decrements the ticket's
+ * comment_count badge. Does NOT invalidate the ticket's modified_at.
+ */
+export function useDeleteComment(ticketId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => deleteComment(id),
+    onSuccess: (_void, deletedId) => {
+      queryClient.setQueryData<Comment[]>(
+        commentsQueryKey(ticketId),
+        (prev) => prev?.filter((c) => c.id !== deletedId) ?? prev,
+      )
+      queryClient.setQueryData<Ticket>(ticketQueryKey(ticketId), (prev) =>
+        prev
+          ? { ...prev, comment_count: Math.max(0, prev.comment_count - 1) }
+          : prev,
       )
     },
   })

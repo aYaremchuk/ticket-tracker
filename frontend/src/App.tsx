@@ -7,7 +7,9 @@ import { PublicRoute } from './components/guards/PublicRoute.tsx'
 import { AppLayout } from './components/layout/AppLayout.tsx'
 import { BoardPage } from './pages/BoardPage.tsx'
 import { EpicsPage } from './pages/EpicsPage.tsx'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
+import { ResetPasswordPage } from './pages/ResetPasswordPage.tsx'
 import { SignupPage } from './pages/SignupPage.tsx'
 import { StatusPage } from './pages/StatusPage.tsx'
 import { TeamsPage } from './pages/TeamsPage.tsx'
@@ -51,6 +53,8 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/verify" element={<VerifyEmailPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
               </Route>
 
               {/* Protected routes — redirect to /login if not authenticated. */}

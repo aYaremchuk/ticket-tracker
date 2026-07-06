@@ -8,12 +8,12 @@ Built for the DataArt hackathon requirements.
 ## Features
 
 - **Accounts:** email/password sign-up, SMTP email verification (24h single-use
-  token), login/logout. Unverified accounts can't use the app.
+  token), login/logout, and password reset. Unverified accounts can't use the app.
 - **Teams:** create / rename / delete (delete blocked while a team has tickets or epics).
 - **Epics:** per-team CRUD (delete blocked while referenced by tickets).
 - **Tickets:** create / view / edit / delete with type (bug/feature/fix), a fixed
   five-state workflow, optional same-team epic, title & body.
-- **Comments:** chronological, attributed, immutable (edit/delete is a stretch feature).
+- **Comments:** chronological, attributed; authors can edit/delete their own.
 - **Board:** per-team five-column view with drag-and-drop state changes (persisted,
   with rollback on failure), plus type/epic filters and case-insensitive title search.
 
@@ -95,6 +95,6 @@ smoke. Steps activate as the corresponding tooling lands per milestone.
 
 ## Tech stack
 
-- **Backend:** Rails 8.1 (API-only), PostgreSQL 16, Argon2id password hashing, **cookie-session auth** (Rails 8 `Session`, HttpOnly `SameSite=Lax`) with CSRF protection, RSpec + SimpleCov.
+- **Backend:** Rails 8.1 (API-only), PostgreSQL 17, Argon2id password hashing, **cookie-session auth** (Rails 8 `Session`, HttpOnly `SameSite=Lax`) with CSRF protection, RSpec + SimpleCov.
 - **Frontend:** React 19 + TypeScript, Vite, Tailwind v4, TanStack Query (server state), **Redux Toolkit** (client/session state), React Router, dnd-kit, Vitest.
 - **Infra:** Docker Compose (db + api + web), nginx (serves SPA + proxies `/api`).

@@ -4,7 +4,7 @@ require "swagger_helper"
 
 # rubocop:disable RSpec/EmptyExampleGroup, RSpec/VariableName
 RSpec.describe("Api::Login", type: :request) do
-  before do
+  before do # rubocop:disable RSpec/ScatteredSetup
     ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN
     get "/api/csrf"
   end
@@ -59,6 +59,21 @@ RSpec.describe("Api::Login", type: :request) do
         let(:credentials) { { email: "ghost@example.com", password: "password123" } }
 
         run_test! do |response|
+          expect(response.parsed_body.dig("error", "code")).to(eq("invalid_credentials"))
+        end
+      end
+
+      response "401", "unknown email still performs a decoy password verify (no timing enumeration)" do
+        let(:credentials) { { email: "ghost@example.com", password: "password123" } }
+
+        before do # rubocop:disable RSpec/ScatteredSetup
+          # Assert the unknown-email path runs a full Argon2 verification so its
+          # timing matches the known-email path.
+          allow(User).to(receive(:waste_password_comparison).and_call_original)
+        end
+
+        run_test! do |response|
+          expect(User).to(have_received(:waste_password_comparison).with("password123"))
           expect(response.parsed_body.dig("error", "code")).to(eq("invalid_credentials"))
         end
       end

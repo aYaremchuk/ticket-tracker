@@ -97,6 +97,21 @@ CREATE TABLE public.epics (
 
 
 --
+-- Name: password_reset_tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.password_reset_tokens (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    token_digest character varying NOT NULL,
+    expires_at timestamp(6) without time zone NOT NULL,
+    consumed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -211,6 +226,14 @@ ALTER TABLE ONLY public.epics
 
 
 --
+-- Name: password_reset_tokens password_reset_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -290,6 +313,27 @@ CREATE INDEX index_email_verification_tokens_on_user_id_and_consumed_at ON publi
 --
 
 CREATE INDEX index_epics_on_team_id ON public.epics USING btree (team_id);
+
+
+--
+-- Name: index_password_reset_tokens_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_password_reset_tokens_on_token_digest ON public.password_reset_tokens USING btree (token_digest);
+
+
+--
+-- Name: index_password_reset_tokens_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_password_reset_tokens_on_user_id ON public.password_reset_tokens USING btree (user_id);
+
+
+--
+-- Name: index_password_reset_tokens_on_user_id_and_consumed_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_password_reset_tokens_on_user_id_and_consumed_at ON public.password_reset_tokens USING btree (user_id, consumed_at);
 
 
 --
@@ -387,6 +431,14 @@ ALTER TABLE ONLY public.epics
 
 
 --
+-- Name: password_reset_tokens fk_rails_1dfd31e72f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT fk_rails_1dfd31e72f FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: email_verification_tokens fk_rails_37a6b0cc74; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -433,6 +485,7 @@ ALTER TABLE ONLY public.tickets
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260706200001'),
 ('20260706190002'),
 ('20260706190001'),
 ('20260706180001'),

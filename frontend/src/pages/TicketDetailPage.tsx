@@ -15,13 +15,22 @@
 
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ApiError } from '../api/client.ts'
 import { Button } from '../components/ui/Button.tsx'
 import { Card } from '../components/ui/Card.tsx'
 import { Textarea } from '../components/ui/Textarea.tsx'
 import { TicketForm } from '../components/TicketForm.tsx'
-import { friendlyCommentsError, useAddComment, useComments } from '../hooks/useComments.ts'
+import {
+  friendlyCommentsError,
+  useAddComment,
+  useComments,
+  useDeleteComment,
+  useUpdateComment,
+} from '../hooks/useComments.ts'
 import { friendlyTicketsError, useDeleteTicket, useTicket, useUpdateTicket } from '../hooks/useTickets.ts'
+import { useAppSelector } from '../store/index.ts'
 import type { TicketFormValues } from '../components/TicketForm.tsx'
+import type { Comment } from '../types/api.ts'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -115,6 +124,153 @@ function DeleteConfirm({ ticketId, onCancel }: DeleteConfirmProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Single comment item — handles inline edit + delete for own comments
+// ---------------------------------------------------------------------------
+
+interface CommentItemProps {
+  comment: Comment
+  ticketId: string
+  isOwn: boolean
+}
+
+function CommentItem({ comment, ticketId, isOwn }: CommentItemProps) {
+  const [editMode, setEditMode] = useState(false)
+  const [editBody, setEditBody] = useState(comment.body)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const updateComment = useUpdateComment(ticketId)
+  const deleteComment = useDeleteComment(ticketId)
+
+  const editError =
+    updateComment.error instanceof ApiError &&
+    updateComment.error.code === 'validation_error'
+      ? updateComment.error.message
+      : updateComment.error
+        ? friendlyCommentsError(updateComment.error)
+        : null
+
+  function handleEdit() {
+    setEditBody(comment.body)
+    setEditMode(true)
+  }
+
+  function handleCancelEdit() {
+    setEditMode(false)
+    updateComment.reset()
+  }
+
+  function handleSaveEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const trimmed = editBody.trim()
+    if (!trimmed) return
+    updateComment.mutate(
+      { id: comment.id, body: trimmed },
+      { onSuccess: () => setEditMode(false) },
+    )
+  }
+
+  function handleDelete() {
+    deleteComment.mutate(comment.id)
+  }
+
+  return (
+    <li className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span className="font-bold text-slate-900">
+          {emailLocalPart(comment.author.email)}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-slate-500">
+            {formatTimestamp(comment.created_at)}
+          </span>
+          {/* Edit/Delete controls visible only for own comments */}
+          {isOwn && !editMode && (
+            <>
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                aria-label="Edit comment"
+              >
+                Edit
+              </button>
+              {confirmDelete ? (
+                <span className="flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleteComment.isPending}
+                    className="font-semibold text-red-600 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 disabled:opacity-50"
+                    aria-label="Confirm delete comment"
+                  >
+                    {deleteComment.isPending ? 'Deleting…' : 'Confirm'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="font-semibold text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-xs font-semibold text-slate-500 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+                  aria-label="Delete comment"
+                >
+                  Delete
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {editMode ? (
+        <form className="mt-2" onSubmit={(e) => handleSaveEdit(e)}>
+          <Textarea
+            label=""
+            rows={3}
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            aria-label="Edit comment body"
+            aria-describedby={editError ? 'edit-comment-error' : undefined}
+            disabled={updateComment.isPending}
+          />
+          {editError && (
+            <p id="edit-comment-error" role="alert" className="mt-1 text-sm text-red-600">
+              {editError}
+            </p>
+          )}
+          <div className="mt-2 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleCancelEdit}
+              disabled={updateComment.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={updateComment.isPending || editBody.trim() === ''}
+            >
+              {updateComment.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <p className="mt-2 text-sm text-slate-700">{comment.body}</p>
+      )}
+    </li>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Comments panel
 // ---------------------------------------------------------------------------
 
@@ -126,6 +282,9 @@ function CommentsPanel({ ticketId }: CommentsPanelProps) {
   const [commentBody, setCommentBody] = useState('')
   const { data: comments, isLoading, error } = useComments(ticketId)
   const addComment = useAddComment(ticketId)
+
+  // Current user from the Redux store — used for own-comment detection.
+  const currentUser = useAppSelector((state) => state.auth.user)
 
   const commentError = addComment.error
     ? friendlyCommentsError(addComment.error)
@@ -182,20 +341,12 @@ function CommentsPanel({ ticketId }: CommentsPanelProps) {
       {!isLoading && !error && comments && comments.length > 0 && (
         <ul className="mt-4 space-y-3">
           {comments.map((comment) => (
-            <li
+            <CommentItem
               key={comment.id}
-              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-            >
-              <div className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="font-bold text-slate-900">
-                  {emailLocalPart(comment.author.email)}
-                </span>
-                <span className="shrink-0 text-slate-500">
-                  {formatTimestamp(comment.created_at)}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-slate-700">{comment.body}</p>
-            </li>
+              comment={comment}
+              ticketId={ticketId}
+              isOwn={Boolean(currentUser && comment.author.id === currentUser.id)}
+            />
           ))}
         </ul>
       )}

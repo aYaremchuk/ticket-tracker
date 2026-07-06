@@ -381,7 +381,12 @@ export function BoardPage() {
           <Button
             variant="secondary"
             disabled={!hasFilters}
-            onClick={() => updateParams({ type: null, epic: null, q: null })}
+            onClick={() => {
+              // Also reset the local search input mirror so a fast Clear during
+              // the 300 ms debounce window doesn't re-apply the stale query.
+              setSearchInput('')
+              updateParams({ type: null, epic: null, q: null })
+            }}
           >
             Clear
           </Button>

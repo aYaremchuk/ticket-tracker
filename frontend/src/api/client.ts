@@ -194,3 +194,27 @@ export async function getMe(): Promise<CurrentUser | null> {
   const res = await request<{ user: CurrentUser | null }>('GET', '/me')
   return res.user
 }
+
+/**
+ * POST /api/password_reset → 202 { message } (always, no account enumeration).
+ * If the account exists, the server emails a reset link with a 24h token.
+ */
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('POST', '/password_reset', { email })
+}
+
+/**
+ * POST /api/password_reset/confirm → 200 { message } on success.
+ * Throws ApiError:
+ *  - 410 `token_invalid` — expired/used/invalid token
+ *  - 422 `validation_error` — password too short
+ */
+export async function confirmPasswordReset(
+  token: string,
+  password: string,
+): Promise<{ message: string }> {
+  return request<{ message: string }>('POST', '/password_reset/confirm', {
+    token,
+    password,
+  })
+}

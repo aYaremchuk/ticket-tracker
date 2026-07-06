@@ -108,6 +108,12 @@ export function LoginPage() {
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Logging in…' : 'Log in'}
         </Button>
+
+        <p className="mt-2 text-center text-sm text-slate-500">
+          <Link to="/forgot-password" className="font-semibold text-slate-900 hover:underline">
+            Forgot password?
+          </Link>
+        </p>
       </form>
 
       {/* Only shown when the account exists but isn't verified yet (403 email_unverified). */}

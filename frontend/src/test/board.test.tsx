@@ -391,6 +391,45 @@ describe('useUpdateTicketState — optimistic move + rollback', () => {
   })
 })
 
+describe('BoardPage — loading and error states', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders BoardSkeleton while tickets are loading', async () => {
+    vi.spyOn(teamsApi, 'listTeams').mockResolvedValue([TEAM_A])
+    vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
+    // Never-resolving promise keeps the loading state visible.
+    vi.spyOn(ticketsApi, 'listTickets').mockImplementation(
+      () => new Promise<{ tickets: Ticket[]; total: number }>(() => {}),
+    )
+
+    renderBoard()
+
+    // The skeleton has role="status" and the aria-label "Loading board".
+    expect(
+      await screen.findByRole('status', { name: 'Loading board' }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders error card with Retry button when the tickets query fails', async () => {
+    vi.spyOn(teamsApi, 'listTeams').mockResolvedValue([TEAM_A])
+    vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
+    vi.spyOn(ticketsApi, 'listTickets').mockRejectedValue(
+      new ApiError('server_error', 'Internal server error', 500),
+    )
+
+    renderBoard()
+
+    // Error message.
+    await screen.findByRole('alert')
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load the board')
+
+    // Retry button exists.
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+  })
+})
+
 describe('BoardPage — filters and search', () => {
   beforeEach(() => {
     vi.restoreAllMocks()

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_06_160004) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_06_170001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -37,6 +37,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_160004) do
     t.uuid "user_id", null: false
     t.index ["token_digest"], name: "index_sessions_on_token_digest", unique: true
     t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
+  create_table "teams", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.citext "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_teams_on_name", unique: true
   end
 
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

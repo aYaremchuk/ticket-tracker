@@ -27,5 +27,8 @@ Rails.application.routes.draw do
 
     # --- Teams (M2) ---
     resources :teams, only: [:index, :create, :update, :destroy]
+
+    # --- Epics (M3) ---
+    resources :epics, only: [:index, :create, :update, :destroy]
   end
 end

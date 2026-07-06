@@ -46,21 +46,47 @@ RSpec.describe(Team, type: :model) do
     end
   end
 
-  describe "counts (pre-M3/M4 defaults)" do
+  describe "counts" do
     subject(:team) { create(:team) }
 
-    it "ticket_count returns 0" do
+    it "ticket_count returns 0 (stub until M4)" do
       expect(team.ticket_count).to(eq(0))
     end
 
-    it "epic_count returns 0" do
+    it "epic_count returns 0 when team has no epics" do
       expect(team.epic_count).to(eq(0))
+    end
+
+    it "epic_count reflects actual epics" do
+      create(:epic, team: team)
+      create(:epic, team: team)
+      expect(team.epic_count).to(eq(2))
     end
   end
 
   describe "#deletable?" do
-    it "returns true before M3/M4 tables exist" do
+    it "returns true when team has no epics" do
       expect(create(:team).deletable?).to(be(true))
+    end
+
+    it "returns false when team has epics" do
+      team = create(:team)
+      create(:epic, team: team)
+      expect(team.deletable?).to(be(false))
+    end
+  end
+
+  describe "delete restriction" do
+    it "raises RecordNotDestroyed when team has epics" do
+      team = create(:team)
+      create(:epic, team: team)
+      expect { team.destroy! }.to(raise_error(ActiveRecord::RecordNotDestroyed))
+    end
+
+    it "destroys successfully when team has no epics" do
+      team = create(:team)
+      expect { team.destroy! }.not_to(raise_error)
+      expect(described_class.find_by(id: team.id)).to(be_nil)
     end
   end
 end

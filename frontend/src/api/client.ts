@@ -50,6 +50,11 @@ let csrfTokenCache: string | null = null
 
 export async function getCsrf(): Promise<string> {
   if (csrfTokenCache !== null) return csrfTokenCache
+  return fetchAndCacheCsrf()
+}
+
+/** Internal: always fetches a fresh token from /api/csrf and caches it. */
+async function fetchAndCacheCsrf(): Promise<string> {
   const res = await fetch('/api/csrf', {
     method: 'GET',
     credentials: 'include',
@@ -75,6 +80,19 @@ type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 const MUTATING_METHODS: ReadonlySet<Method> = new Set(['POST', 'PATCH', 'DELETE'])
 
 export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  return doRequest<T>(method, path, body, false)
+}
+
+/**
+ * Internal implementation. `isRetry` prevents infinite recursion on CSRF
+ * stale-token recovery: we retry at most once.
+ */
+async function doRequest<T>(
+  method: Method,
+  path: string,
+  body: unknown,
+  isRetry: boolean,
+): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -98,12 +116,34 @@ export async function request<T>(method: Method, path: string, body?: unknown): 
     return undefined as T
   }
 
-  const json = (await res.json()) as Record<string, unknown>
+  // Attempt to parse the response body as JSON. Non-JSON bodies (e.g. nginx 502
+  // HTML pages) must not throw a raw SyntaxError — we catch and fall back to an
+  // ApiError with code 'unknown'.
+  let json: Record<string, unknown>
+  try {
+    json = (await res.json()) as Record<string, unknown>
+  } catch {
+    if (!res.ok) {
+      throw new ApiError('unknown', 'Request failed', res.status)
+    }
+    // Successful response with non-JSON body — unlikely but return empty object.
+    return {} as T
+  }
 
   if (!res.ok) {
     // Parse the standard error envelope.
     const errEnvelope = json as { error?: { code?: string; message?: string; details?: Record<string, string[]> } }
     const err = errEnvelope.error
+
+    // CSRF stale-token recovery: server returns 403 csrf_invalid when our cached
+    // token is no longer valid (e.g. after a server restart). Clear the cache,
+    // fetch a fresh token, and retry the original request exactly once.
+    if (err?.code === 'csrf_invalid' && !isRetry && MUTATING_METHODS.has(method)) {
+      clearCsrfCache()
+      await fetchAndCacheCsrf()
+      return doRequest<T>(method, path, body, true)
+    }
+
     throw new ApiError(
       err?.code ?? 'unknown',
       err?.message ?? 'An unexpected error occurred.',

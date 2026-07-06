@@ -49,8 +49,16 @@ RSpec.describe(Team, type: :model) do
   describe "counts" do
     subject(:team) { create(:team) }
 
-    it "ticket_count returns 0 (stub until M4)" do
+    let(:creator) { create(:user) }
+
+    it "ticket_count returns 0 when team has no tickets" do
       expect(team.ticket_count).to(eq(0))
+    end
+
+    it "ticket_count reflects actual tickets" do
+      create(:ticket, team: team, created_by: creator)
+      create(:ticket, team: team, created_by: creator)
+      expect(team.ticket_count).to(eq(2))
     end
 
     it "epic_count returns 0 when team has no epics" do
@@ -65,7 +73,9 @@ RSpec.describe(Team, type: :model) do
   end
 
   describe "#deletable?" do
-    it "returns true when team has no epics" do
+    let(:creator) { create(:user) }
+
+    it "returns true when team has no epics or tickets" do
       expect(create(:team).deletable?).to(be(true))
     end
 
@@ -74,16 +84,30 @@ RSpec.describe(Team, type: :model) do
       create(:epic, team: team)
       expect(team.deletable?).to(be(false))
     end
+
+    it "returns false when team has tickets" do
+      team = create(:team)
+      create(:ticket, team: team, created_by: creator)
+      expect(team.deletable?).to(be(false))
+    end
   end
 
   describe "delete restriction" do
+    let(:creator) { create(:user) }
+
     it "raises RecordNotDestroyed when team has epics" do
       team = create(:team)
       create(:epic, team: team)
       expect { team.destroy! }.to(raise_error(ActiveRecord::RecordNotDestroyed))
     end
 
-    it "destroys successfully when team has no epics" do
+    it "raises RecordNotDestroyed when team has tickets" do
+      team = create(:team)
+      create(:ticket, team: team, created_by: creator)
+      expect { team.destroy! }.to(raise_error(ActiveRecord::RecordNotDestroyed))
+    end
+
+    it "destroys successfully when team has no epics or tickets" do
       team = create(:team)
       expect { team.destroy! }.not_to(raise_error)
       expect(described_class.find_by(id: team.id)).to(be_nil)

@@ -35,6 +35,10 @@ rescue ActiveRecord::PendingMigrationError => e
   abort(e.to_s.strip)
 end
 RSpec.configure do |config|
+  # Make ActiveSupport time-travel helpers (travel, travel_to, freeze_time)
+  # available in all specs (model specs included).
+  config.include(ActiveSupport::Testing::TimeHelpers)
+
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_paths = [
     Rails.root.join("spec/fixtures"),

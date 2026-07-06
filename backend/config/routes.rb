@@ -30,5 +30,10 @@ Rails.application.routes.draw do
 
     # --- Epics (M3) ---
     resources :epics, only: [:index, :create, :update, :destroy]
+
+    # --- Tickets + Comments (M4) ---
+    resources :tickets, only: [:index, :show, :create, :update, :destroy] do
+      resources :comments, only: [:index, :create]
+    end
   end
 end

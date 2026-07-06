@@ -89,9 +89,34 @@ RSpec.describe(Epic, type: :model) do
   end
 
   describe "#ticket_count" do
-    it "returns 0 (stub until M4)" do
+    let(:creator) { create(:user) }
+
+    it "returns 0 when epic has no tickets" do
       epic = create(:epic)
       expect(epic.ticket_count).to(eq(0))
+    end
+
+    it "returns the count of associated tickets" do
+      epic = create(:epic)
+      create(:ticket, epic: epic, team: epic.team, created_by: creator)
+      create(:ticket, epic: epic, team: epic.team, created_by: creator)
+      expect(epic.ticket_count).to(eq(2))
+    end
+  end
+
+  describe "delete restriction with tickets" do
+    let(:creator) { create(:user) }
+
+    it "raises RecordNotDestroyed when epic has tickets" do
+      epic = create(:epic)
+      create(:ticket, epic: epic, team: epic.team, created_by: creator)
+      expect { epic.destroy! }.to(raise_error(ActiveRecord::RecordNotDestroyed))
+    end
+
+    it "destroys successfully when epic has no tickets" do
+      epic = create(:epic)
+      expect { epic.destroy! }.not_to(raise_error)
+      expect(described_class.find_by(id: epic.id)).to(be_nil)
     end
   end
 end

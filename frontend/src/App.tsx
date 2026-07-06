@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { SignupPage } from './pages/SignupPage.tsx'
 import { StatusPage } from './pages/StatusPage.tsx'
 import { TeamsPage } from './pages/TeamsPage.tsx'
+import { TicketCreatePage } from './pages/TicketCreatePage.tsx'
 import { TicketDetailPage } from './pages/TicketDetailPage.tsx'
 import { VerifyEmailPage } from './pages/VerifyEmailPage.tsx'
 import { store } from './store/index.ts'
@@ -57,6 +58,7 @@ function App() {
                 <Route element={<AppLayout />}>
                   <Route index element={<Navigate to="/board" replace />} />
                   <Route path="/board" element={<BoardPage />} />
+                  <Route path="/tickets/new" element={<TicketCreatePage />} />
                   <Route path="/tickets/:id" element={<TicketDetailPage />} />
                   <Route path="/teams" element={<TeamsPage />} />
                   <Route path="/epics" element={<EpicsPage />} />

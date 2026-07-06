@@ -4,18 +4,33 @@ module Api
   # CRUD for teams. All actions require an authenticated + verified session
   # (default gate from ApplicationController). Writes require CSRF + Origin.
   #
-  # DELETE 409 behavior (M3/M4 TODO):
-  #   Once epics/tickets tables exist, uncomment `has_many ... dependent:
-  #   :restrict_with_error` in the Team model. ActiveRecord will then raise
-  #   ActiveRecord::DeleteRestrictionError on destroy, which is rescued here
-  #   and mapped to 409 team_has_references.
+  # N+1 fix: ticket_count and epic_count are resolved with a single grouped
+  # COUNT query each rather than one query per team.
   class TeamsController < ApplicationController
     before_action :set_team, only: [:update, :destroy]
 
     # GET /api/teams
     def index
       teams = Team.order(:name)
-      render(json: { teams: teams.map { |t| TeamSerializer.call(t) } }, status: :ok)
+
+      # Precompute counts in two bulk queries to avoid N+1.
+      ticket_counts = Ticket.where(team_id: teams.map(&:id))
+        .group(:team_id).count
+      epic_counts   = Epic.where(team_id: teams.map(&:id))
+        .group(:team_id).count
+
+      render(
+        json: {
+          teams: teams.map do |t|
+            TeamSerializer.call(
+              t,
+              ticket_count: ticket_counts.fetch(t.id, 0),
+              epic_count:   epic_counts.fetch(t.id, 0),
+            )
+          end,
+        },
+        status: :ok,
+      )
     end
 
     # POST /api/teams
@@ -68,7 +83,7 @@ module Api
       head(:no_content)
     rescue ActiveRecord::RecordNotDestroyed
       # Raised by destroy! when `dependent: :restrict_with_error` blocks deletion
-      # (i.e. the team still has referencing epics (M3) or tickets (M4)).
+      # (i.e. the team still has referencing epics or tickets).
       render_error(
         code: "team_has_references",
         message: "Team has associated epics or tickets and cannot be deleted",

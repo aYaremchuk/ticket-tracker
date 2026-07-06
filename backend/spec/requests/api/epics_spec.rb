@@ -370,21 +370,21 @@ RSpec.describe("Api::Epics", type: :request) do
           end
         end
 
-        # NOTE: 409 epic_has_tickets cannot be exercised yet. The tickets table
-        # is added in M4. The rescue in EpicsController#destroy is already wired
-        # and ready. Enable this example once that table exists:
-        #
-        # response "409", "epic has tickets" do
-        #   before do
-        #     create(:ticket, epic: existing_epic)
-        #     login_and_csrf_headers
-        #   end
-        #   let!(:existing_epic) { create(:epic, team: team) }
-        #   let(:id) { existing_epic.id }
-        #   run_test! do |response|
-        #     expect(response.parsed_body.dig("error", "code")).to eq("epic_has_tickets")
-        #   end
-        # end
+        response "409", "epic has tickets — delete is blocked" do
+          let!(:existing_epic) { create(:epic, team: team) }
+          let(:id)             { existing_epic.id }
+          let(:_headers)       { login_and_csrf_headers }
+          let(:Origin)         { _headers["Origin"] }
+          let(:"X-CSRF-Token") { _headers["X-CSRF-Token"] }
+
+          before do
+            create(:ticket, epic: existing_epic, team: team, created_by: user)
+          end
+
+          run_test! do |response|
+            expect(response.parsed_body.dig("error", "code")).to(eq("epic_has_tickets"))
+          end
+        end
       end
     end
   end

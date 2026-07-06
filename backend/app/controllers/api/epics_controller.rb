@@ -8,11 +8,8 @@ module Api
   # team_id is fixed at creation (immutable) — PATCH ignores any team_id
   # in the payload (attr_readonly on the model silently discards it).
   #
-  # DELETE 409 behavior (M4 TODO):
-  #   Once the tickets table exists, uncomment `has_many :tickets,
-  #   dependent: :restrict_with_error` in the Epic model. ActiveRecord will
-  #   then raise ActiveRecord::DeleteRestrictionError on destroy, which is
-  #   rescued here and mapped to 409 epic_has_tickets.
+  # N+1 fix: ticket_count is resolved with a single grouped COUNT query
+  # for the index action.
   class EpicsController < ApplicationController
     before_action :set_epic, only: [:update, :destroy]
 
@@ -31,7 +28,19 @@ module Api
       # 404 if team does not exist
       team = Team.find(team_id)
       epics = team.epics.order(:title)
-      render(json: { epics: epics.map { |e| EpicSerializer.call(e) } }, status: :ok)
+
+      # Precompute ticket counts in a single grouped query to avoid N+1.
+      ticket_counts = Ticket.where(epic_id: epics.map(&:id))
+        .group(:epic_id).count
+
+      render(
+        json: {
+          epics: epics.map do |e|
+            EpicSerializer.call(e, ticket_count: ticket_counts.fetch(e.id, 0))
+          end,
+        },
+        status: :ok,
+      )
     end
 
     # POST /api/epics
@@ -65,7 +74,7 @@ module Api
       head(:no_content)
     rescue ActiveRecord::RecordNotDestroyed
       # Raised by destroy! when `dependent: :restrict_with_error` blocks deletion
-      # (i.e. the epic still has referencing tickets — wired up in M4).
+      # (i.e. the epic still has referencing tickets).
       render_error(
         code: "epic_has_tickets",
         message: "Epic has associated tickets and cannot be deleted",

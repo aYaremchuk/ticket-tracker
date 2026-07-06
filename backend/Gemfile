@@ -1,0 +1,52 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 8.1.3"
+# PostgreSQL database
+gem "pg", "~> 1.1"
+# Puma web server
+gem "puma", ">= 5.0"
+
+# Argon2id password hashing (spec-mandated algorithm)
+gem "argon2", "~> 2.3"
+
+# Cross-Origin Resource Sharing — allows the SPA dev server / separate origin
+gem "rack-cors"
+
+# OpenAPI / Swagger UI at /api-docs (interactive API browser + "Try it out").
+# The OpenAPI spec is generated from RSpec request specs (rswag-specs).
+gem "rswag-api"
+gem "rswag-ui"
+# ostruct is no longer a bundled default gem in Ruby 4.0; rswag-ui requires it.
+gem "ostruct"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
+
+group :development, :test do
+  # Debugging
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+
+  # RSpec test framework + fixtures replacement
+  gem "rspec-rails", "~> 7.1"
+  gem "factory_bot_rails"
+
+  # Generates the OpenAPI spec from request specs (docs stay in sync with tests)
+  gem "rswag-specs"
+
+  # Code coverage — enforced minimum 85% (configured in spec/spec_helper.rb)
+  gem "simplecov", require: false
+
+  # Audits gems for known security defects
+  gem "bundler-audit", require: false
+
+  # Static analysis for security vulnerabilities
+  gem "brakeman", require: false
+
+  # Shopify's community Ruby style guide + Rails/RSpec cops
+  gem "rubocop-shopify", require: false
+  gem "rubocop-rails", require: false
+  gem "rubocop-rspec", require: false
+end

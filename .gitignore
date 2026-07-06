@@ -1,0 +1,21 @@
+# Secrets / environment — never commit real values
+.env
+.env.*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Claude Code project config / AI tooling (kept local, not committed)
+.claude/
+.mcp.json
+
+# Docker volumes / local data
+/data/
+
+# Design docs / wireframes / generated screenshots (kept local, not committed)
+docs/

@@ -1,0 +1,22 @@
+# PostgreSQL configuration. All connection details come from the environment
+# so the same image runs unchanged under docker compose (see .env / compose).
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
+  port: <%= ENV.fetch("DATABASE_PORT", 5432) %>
+  username: <%= ENV.fetch("DATABASE_USER", "postgres") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD", "postgres") %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME", "task_managing_system_development") %>
+
+test:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME_TEST", "task_managing_system_test") %>
+
+production:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME", "task_managing_system_production") %>

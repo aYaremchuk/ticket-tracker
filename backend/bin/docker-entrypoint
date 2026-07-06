@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+# Wait for Postgres to accept connections before touching the DB.
+echo "Waiting for database at ${DATABASE_HOST:-localhost}:${DATABASE_PORT:-5432}..."
+until pg_isready -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" -U "${DATABASE_USER:-postgres}" >/dev/null 2>&1; do
+  sleep 1
+done
+
+# Prepare the schema via migrations only — never load seed data (spec §9).
+echo "Preparing database (create + migrate, no seeds)..."
+bundle exec rails db:prepare
+
+# Hand off to the container command (Puma by default).
+exec "$@"

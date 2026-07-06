@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Per-milestone exit gate. Runs the full quality bar. Each step guards on whether
+# its config exists yet, so this is green at M0 and tightens as milestones add
+# RSpec/ESLint/etc. Backend checks run inside the api container; frontend checks
+# run in a throwaway node container so no host toolchain is required.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+FAIL=0
+step() { echo ""; echo "▶ $*"; }
+ok()   { echo "  ✓ $*"; }
+skip() { echo "  ⏭ SKIP: $*"; }
+bad()  { echo "  ✗ FAIL: $*"; FAIL=1; }
+
+DC="docker compose"
+API_RUN="$DC run --rm --no-deps api"
+NODE_RUN=docker run --rm -v "$PWD/frontend:/app" -w /app node:22-slim
+
+# ---------- Backend ----------
+step "Backend: rubocop (Shopify)"
+if [ -f backend/.rubocop.yml ]; then $API_RUN bundle exec rubocop || bad rubocop; else skip "no .rubocop.yml yet"; fi
+
+step "Backend: brakeman"
+$API_RUN bundle exec brakeman -q -w2 >/dev/null 2>&1 && ok brakeman || bad brakeman
+
+step "Backend: bundler-audit"
+$API_RUN bash -lc "bundle exec bundler-audit check --update" && ok bundler-audit || bad bundler-audit
+
+step "Backend: rspec + SimpleCov (>=85%)"
+if [ -f backend/.rspec ]; then $API_RUN bundle exec rspec || bad rspec; else skip "RSpec not initialized yet (M1)"; fi
+
+# ---------- Frontend ----------
+step "Frontend: install"
+$NODE_RUN npm ci >/dev/null 2>&1 && ok "npm ci" || bad "npm ci"
+
+step "Frontend: tsc --noEmit"
+$NODE_RUN npx tsc --noEmit && ok tsc || bad tsc
+
+step "Frontend: eslint"
+if [ -f frontend/eslint.config.js ] || [ -f frontend/.eslintrc.cjs ]; then $NODE_RUN npm run lint || bad eslint; else skip "no eslint config yet"; fi
+
+step "Frontend: prettier --check"
+if [ -f frontend/.prettierrc ] || [ -f frontend/.prettierrc.json ]; then $NODE_RUN npx prettier --check "src/**/*.{ts,tsx,css}" || bad prettier; else skip "prettier not configured yet"; fi
+
+step "Frontend: npm audit (high/critical)"
+$NODE_RUN npm audit --audit-level=high >/dev/null 2>&1 && ok "npm audit" || bad "npm audit (high/critical vulns)"
+
+step "Frontend: vitest"
+if grep -q '"test"' frontend/package.json 2>/dev/null; then $NODE_RUN npm test || bad vitest; else skip "vitest not configured yet"; fi
+
+step "Frontend: production build"
+$NODE_RUN npm run build >/dev/null 2>&1 && ok "vite build" || bad "vite build"
+
+# ---------- App smoke ----------
+step "App: compose build + health"
+$DC up --build -d >/dev/null 2>&1 || bad "compose up"
+sleep 8
+code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:"${WEB_PORT:-8080}"/api/health || echo 000)
+[ "$code" = "200" ] && ok "/api/health 200" || bad "/api/health returned $code"
+
+echo ""
+if [ "$FAIL" = "0" ]; then echo "✅ exit gate GREEN"; else echo "❌ exit gate RED"; fi
+exit $FAIL

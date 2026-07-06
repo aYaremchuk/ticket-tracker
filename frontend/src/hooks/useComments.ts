@@ -10,7 +10,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client.ts'
 import { addComment, listComments } from '../api/comments.ts'
-import type { Comment } from '../types/api.ts'
+import { ticketQueryKey } from './useTickets.ts'
+import type { Comment, Ticket } from '../types/api.ts'
 
 // ---------------------------------------------------------------------------
 // Query key factory
@@ -70,6 +71,11 @@ export function useAddComment(ticketId: string) {
       queryClient.setQueryData<Comment[]>(
         commentsQueryKey(ticketId),
         (prev) => [...(prev ?? []), newComment],
+      )
+      // Keep the cached ticket's comment_count in sync so board/detail badges
+      // don't go stale (comments don't bump modified_at, so no refetch happens).
+      queryClient.setQueryData<Ticket>(ticketQueryKey(ticketId), (prev) =>
+        prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev,
       )
     },
   })

@@ -22,6 +22,7 @@ import type {
   Ticket,
   TicketCreateRequest,
   TicketFilters,
+  TicketState,
   TicketUpdateRequest,
 } from '../types/api.ts'
 
@@ -32,6 +33,12 @@ import type {
 export const ticketQueryKey = (id: string) => ['ticket', id] as const
 export const ticketsListQueryKey = (filters?: Partial<TicketFilters>) =>
   filters ? (['tickets', filters] as const) : (['tickets'] as const)
+
+/** Shape of GET /api/tickets responses (also the board's cache entry shape). */
+export interface TicketsListResponse {
+  tickets: Ticket[]
+  total: number
+}
 
 // ---------------------------------------------------------------------------
 // Error helper
@@ -74,11 +81,20 @@ export function useTicket(id: string | undefined) {
   })
 }
 
-/** Fetches the ticket list with optional filters. Used by the board (M5). */
-export function useTickets(filters?: Partial<TicketFilters>) {
-  return useQuery<{ tickets: Ticket[]; total: number }, Error>({
+/**
+ * Fetches the ticket list with optional filters. Used by the board (M5).
+ * `placeholderData` keeps the previous page of tickets on screen while a new
+ * filter combination fetches — no skeleton flash on every keystroke/filter.
+ */
+export function useTickets(
+  filters?: Partial<TicketFilters>,
+  options?: { enabled?: boolean },
+) {
+  return useQuery<TicketsListResponse, Error>({
     queryKey: ticketsListQueryKey(filters),
     queryFn: () => listTickets(filters ?? {}),
+    enabled: options?.enabled ?? true,
+    placeholderData: (previous) => previous,
   })
 }
 
@@ -109,6 +125,73 @@ export function useUpdateTicket(id: string) {
       // Update the cached ticket directly to avoid a redundant refetch.
       queryClient.setQueryData(ticketQueryKey(id), updated)
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    },
+  })
+}
+
+export interface MoveTicketVars {
+  id: string
+  state: TicketState
+}
+
+/**
+ * Board drag-and-drop mutation — optimistic update + rollback (per the
+ * dragdrop-rollback skill):
+ *   onMutate  — snapshot the current list, move the card in the cache NOW.
+ *   onError   — restore the snapshot (card jumps back) + surface a toast
+ *               message via `onErrorMessage`.
+ *   onSettled — invalidate so the server-ordered (modified_at DESC) list
+ *               re-syncs either way.
+ *
+ * `filters` must be the exact filter object the board's useTickets uses so we
+ * patch the same cache entry the columns render from.
+ */
+export function useUpdateTicketState(
+  filters: Partial<TicketFilters> | undefined,
+  onErrorMessage?: (message: string) => void,
+) {
+  const queryClient = useQueryClient()
+  const listKey = ticketsListQueryKey(filters)
+
+  return useMutation<
+    Ticket,
+    Error,
+    MoveTicketVars,
+    { previous?: TicketsListResponse }
+  >({
+    mutationFn: ({ id, state }) => updateTicket(id, { state }),
+
+    onMutate: async ({ id, state }) => {
+      // Don't let an in-flight refetch overwrite the optimistic move.
+      await queryClient.cancelQueries({ queryKey: listKey })
+      const previous = queryClient.getQueryData<TicketsListResponse>(listKey)
+      queryClient.setQueryData<TicketsListResponse>(listKey, (old) =>
+        old
+          ? {
+              ...old,
+              tickets: old.tickets.map((t) =>
+                t.id === id ? { ...t, state } : t,
+              ),
+            }
+          : old,
+      )
+      return { previous }
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(listKey, context.previous)
+      onErrorMessage?.(
+        'Could not move the ticket. It was returned to its column.',
+      )
+    },
+
+    onSuccess: (updated, { id }) => {
+      // Keep the detail-page cache consistent with the new state.
+      queryClient.setQueryData(ticketQueryKey(id), updated)
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: listKey })
     },
   })
 }

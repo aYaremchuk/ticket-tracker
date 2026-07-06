@@ -53,17 +53,35 @@ Rails.application.configure do
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
+  # Verification links point at the SPA origin (APP_BASE_URL, e.g. the nginx
+  # host). Derive host/port/protocol for mailer URL generation.
+  if ENV["APP_BASE_URL"].present?
+    app_uri = URI.parse(ENV["APP_BASE_URL"])
+    config.action_mailer.default_url_options = {
+      host: app_uri.host,
+      port: app_uri.port,
+      protocol: app_uri.scheme,
+    }.compact
+  else
+    config.action_mailer.default_url_options = { host: "example.com" }
+  end
 
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
+  # Real delivery via SMTP. All settings come from ENV (never committed) so the
+  # same image can target relay1.dataart.com or any other relay. AUTHENTICATION
+  # is optional — an unauthenticated internal relay is supported by leaving
+  # SMTP_AUTHENTICATION/USER_NAME/PASSWORD unset.
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.perform_deliveries = true
+  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.smtp_settings = {
+    address: ENV.fetch("SMTP_ADDRESS", "relay1.dataart.com"),
+    port: ENV.fetch("SMTP_PORT", 25).to_i,
+    domain: ENV["SMTP_DOMAIN"].presence,
+    user_name: ENV["SMTP_USER_NAME"].presence,
+    password: ENV["SMTP_PASSWORD"].presence,
+    authentication: ENV["SMTP_AUTHENTICATION"].presence,
+    enable_starttls_auto: true,
+  }.compact
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

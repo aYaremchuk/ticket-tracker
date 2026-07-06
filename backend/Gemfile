@@ -27,6 +27,11 @@ gem "tzinfo-data", platforms: [:windows, :jruby]
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
+group :development do
+  # Captures sent email in development; view at /letter_opener (no SMTP needed).
+  gem "letter_opener_web"
+end
+
 group :development, :test do
   # Debugging
   gem "debug", platforms: [:mri, :windows], require: "debug/prelude"

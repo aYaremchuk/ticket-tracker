@@ -12,7 +12,6 @@ module Api
   class TicketsController < ApplicationController
     before_action :set_ticket, only: [:show, :update, :destroy]
 
-    # GET /api/tickets?team_id=<uuid>&type=&epic_id=&q=
     def index
       team_id = params[:team_id]
       if team_id.blank?
@@ -23,7 +22,6 @@ module Api
         )
       end
 
-      # 404 if team does not exist
       Team.find(team_id)
 
       scope = Ticket.where(team_id: team_id)
@@ -40,7 +38,6 @@ module Api
       tickets = scope.includes(:created_by)
       total   = tickets.size
 
-      # Precompute comment counts in a single grouped query to avoid N+1.
       comment_counts = Comment.where(ticket_id: tickets.map(&:id))
         .group(:ticket_id).count
 
@@ -55,14 +52,11 @@ module Api
       )
     end
 
-    # GET /api/tickets/:id
     def show
       render(json: TicketSerializer.call(@ticket), status: :ok)
     end
 
-    # POST /api/tickets
     def create
-      # Validate team + epic existence before building the ticket.
       team = find_team!(create_params[:team_id])
       return unless team
 
@@ -80,14 +74,11 @@ module Api
       end
     end
 
-    # PATCH /api/tickets/:id
     def update
-      # If team_id is changing, validate the new team exists.
       if update_params[:team_id].present? && update_params[:team_id] != @ticket.team_id
         return unless find_team!(update_params[:team_id])
       end
 
-      # If epic_id is being set (non-nil), validate the epic exists.
       if update_params.key?(:epic_id) && update_params[:epic_id].present?
         return unless find_epic!(update_params[:epic_id])
       end
@@ -99,7 +90,6 @@ module Api
       end
     end
 
-    # DELETE /api/tickets/:id
     def destroy
       @ticket.destroy!
       head(:no_content)

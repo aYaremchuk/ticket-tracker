@@ -25,7 +25,7 @@ export async function updateTeam(id: string, name: string): Promise<Team> {
 /**
  * DELETE /api/teams/:id → 204 (void).
  * Throws ApiError with code "team_has_references" (409) if the team still has
- * tickets or epics. This can't happen until M3/M4 creates those but we handle
+ * tickets or epics. This can't happen until epics/tickets exist, but we handle
  * it now per the contract.
  */
 export async function deleteTeam(id: string): Promise<void> {

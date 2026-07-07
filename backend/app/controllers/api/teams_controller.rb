@@ -9,11 +9,9 @@ module Api
   class TeamsController < ApplicationController
     before_action :set_team, only: [:update, :destroy]
 
-    # GET /api/teams
     def index
       teams = Team.order(:name)
 
-      # Precompute counts in two bulk queries to avoid N+1.
       ticket_counts = Ticket.where(team_id: teams.map(&:id))
         .group(:team_id).count
       epic_counts   = Epic.where(team_id: teams.map(&:id))
@@ -33,7 +31,6 @@ module Api
       )
     end
 
-    # POST /api/teams
     def create
       team = Team.new(team_params)
 
@@ -56,7 +53,6 @@ module Api
       )
     end
 
-    # PATCH /api/teams/:id
     def update
       if @team.update(team_params)
         render(json: TeamSerializer.call(@team), status: :ok)
@@ -77,7 +73,6 @@ module Api
       )
     end
 
-    # DELETE /api/teams/:id
     def destroy
       @team.destroy!
       head(:no_content)

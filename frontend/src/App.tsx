@@ -19,7 +19,7 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage.tsx'
 import { store } from './store/index.ts'
 
 /**
- * TanStack Query client for M2+ server-state (boards, teams, epics, tickets).
+ * TanStack Query client for server-state (boards, teams, epics, tickets).
  * Defined outside the component so it isn't recreated on re-renders.
  */
 const queryClient = new QueryClient({

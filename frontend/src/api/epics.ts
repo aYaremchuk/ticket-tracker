@@ -35,7 +35,7 @@ export async function updateEpic(
 /**
  * DELETE /api/epics/:id → 204 (void).
  * Throws ApiError with code "epic_has_tickets" (409) if the epic has tickets.
- * This won't occur until M4 creates tickets but we handle it per the contract.
+ * This won't occur until tickets exist but we handle it per the contract.
  */
 export async function deleteEpic(id: string): Promise<void> {
   return request<void>('DELETE', `/epics/${id}`)

@@ -1,5 +1,5 @@
 /**
- * Ticket create screen — M4.
+ * Ticket create screen.
  *
  * Renders TicketForm in 'create' mode (state field hidden).
  * On save: POST via useCreateTicket, navigate to /tickets/:id on 201.

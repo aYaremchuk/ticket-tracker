@@ -1,5 +1,5 @@
 /**
- * Kanban board (M5).
+ * Kanban board.
  *
  * Architecture notes:
  * - URL owns all board state (?team, ?type, ?epic, ?q) so the view is

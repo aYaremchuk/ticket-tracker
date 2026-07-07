@@ -1,5 +1,5 @@
 /**
- * Teams management screen — M2: wired to the real API.
+ * Teams management screen: wired to the real API.
  *
  * - List loaded via useTeams() (TanStack Query).
  * - Create: modal → useCreateTeam; inline 422 (blank) + 409 (duplicate) errors.

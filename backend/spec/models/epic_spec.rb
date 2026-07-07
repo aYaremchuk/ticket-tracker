@@ -90,14 +90,13 @@ RSpec.describe(Epic, type: :model) do
 
   describe "#ticket_count" do
     let(:creator) { create(:user) }
+    let!(:epic) { create(:epic) }
 
     it "returns 0 when epic has no tickets" do
-      epic = create(:epic)
       expect(epic.ticket_count).to(eq(0))
     end
 
     it "returns the count of associated tickets" do
-      epic = create(:epic)
       create(:ticket, epic: epic, team: epic.team, created_by: creator)
       create(:ticket, epic: epic, team: epic.team, created_by: creator)
       expect(epic.ticket_count).to(eq(2))

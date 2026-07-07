@@ -1,5 +1,5 @@
 /**
- * Epics management screen — M3: wired to the real API.
+ * Epics management screen: wired to the real API.
  *
  * Layout (wireframe 5):
  *   - Team selector (top) — populated from useTeams(); defaults to first team;

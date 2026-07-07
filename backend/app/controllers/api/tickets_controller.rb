@@ -29,7 +29,12 @@ module Api
       scope = Ticket.where(team_id: team_id)
       scope = scope.where(ticket_type: params[:type]) if params[:type].present?
       scope = scope.where(epic_id: params[:epic_id])  if params[:epic_id].present?
-      scope = scope.where("LOWER(title) LIKE ?", "%#{params.expect(:q).downcase}%") if params[:q].present?
+      if params[:q].present?
+        # Escape LIKE wildcards so a literal % or _ in the search is matched
+        # literally rather than acting as a wildcard.
+        term = ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.downcase)
+        scope = scope.where("LOWER(title) LIKE ?", "%#{term}%")
+      end
       scope = scope.order(modified_at: :desc)
 
       tickets = scope.includes(:created_by)

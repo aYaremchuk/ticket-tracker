@@ -8,12 +8,14 @@ Built for the DataArt hackathon requirements.
 ## Features
 
 - **Accounts:** email/password sign-up, SMTP email verification (24h single-use
-  token), login/logout. Unverified accounts can't use the app.
+  token), login/logout, and password reset. Unverified accounts can't use the app.
 - **Teams:** create / rename / delete (delete blocked while a team has tickets or epics).
 - **Epics:** per-team CRUD (delete blocked while referenced by tickets).
 - **Tickets:** create / view / edit / delete with type (bug/feature/fix), a fixed
   five-state workflow, optional same-team epic, title & body.
-- **Comments:** chronological, attributed, immutable (edit/delete is a stretch feature).
+- **Comments:** chronological, attributed; authors can edit/delete their own.
+- **Activity history:** every ticket records who created it, each field/state
+  change (old → new), and comment adds/edits/deletes — newest-first on the ticket page.
 - **Board:** per-team five-column view with drag-and-drop state changes (persisted,
   with rollback on failure), plus type/epic filters and case-insensitive title search.
 
@@ -68,6 +70,18 @@ exactly like the nginx-served production setup.
   sign-up, login, email verification, resend, password reset, `/api/csrf`, and
   `/api/health`.
 
+## API documentation
+
+Interactive Swagger UI at **[http://localhost:8080/api-docs](http://localhost:8080/api-docs)**
+(OpenAPI generated from the request specs). The UI **and** the raw spec are
+protected by **HTTP Basic auth** whenever `SWAGGER_USER`/`SWAGGER_PASSWORD` are
+set — and always in production (fail-closed if unset). The dev compose defaults
+to **`docs` / `docs`**; clear both to open the docs in development.
+
+Endpoint auth uses cookies + CSRF (not bearer) — to test protected endpoints:
+`GET /api/csrf` → copy token → `POST /api/login` (paste token in `X-CSRF-Token`)
+→ then "Try it out" (paste the token on writes). See `backend/README.md`.
+
 ## Configuration
 
 All configuration is via environment variables — see `.env.example`. Never commit
@@ -95,6 +109,6 @@ smoke. Steps activate as the corresponding tooling lands per milestone.
 
 ## Tech stack
 
-- **Backend:** Rails 8.1 (API-only), PostgreSQL 16, Argon2id password hashing, **cookie-session auth** (Rails 8 `Session`, HttpOnly `SameSite=Lax`) with CSRF protection, RSpec + SimpleCov.
+- **Backend:** Rails 8.1 (API-only), PostgreSQL 17, Argon2id password hashing, **cookie-session auth** (Rails 8 `Session`, HttpOnly `SameSite=Lax`) with CSRF protection, RSpec + SimpleCov.
 - **Frontend:** React 19 + TypeScript, Vite, Tailwind v4, TanStack Query (server state), **Redux Toolkit** (client/session state), React Router, dnd-kit, Vitest.
 - **Infra:** Docker Compose (db + api + web), nginx (serves SPA + proxies `/api`).

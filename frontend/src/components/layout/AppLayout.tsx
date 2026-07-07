@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { currentUser } from '../../data/mock'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { logout } from '../../api/client.ts'
+import { clearUser } from '../../store/authSlice.ts'
+import { useAppDispatch, useAppSelector } from '../../store/index.ts'
 
 const tabs = [
   { to: '/board', label: 'Board' },
@@ -48,7 +50,12 @@ export function AppLayout() {
 }
 
 function UserMenu() {
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const user = useAppSelector((state) => state.auth.user)
+
   const [open, setOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -69,6 +76,19 @@ function UserMenu() {
     }
   }, [open])
 
+  async function handleLogout() {
+    setOpen(false)
+    setLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      dispatch(clearUser())
+      navigate('/login', { replace: true })
+    }
+  }
+
+  const displayEmail = user?.email ?? ''
+
   return (
     <div ref={ref} className="relative ml-auto">
       <button
@@ -76,9 +96,10 @@ function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+        disabled={loggingOut}
+        className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
       >
-        {currentUser.email}
+        {displayEmail}
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
@@ -96,9 +117,11 @@ function UserMenu() {
           <button
             type="button"
             role="menuitem"
-            className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => void handleLogout()}
+            disabled={loggingOut}
+            className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            Log out
+            {loggingOut ? 'Logging out…' : 'Log out'}
           </button>
         </div>
       )}

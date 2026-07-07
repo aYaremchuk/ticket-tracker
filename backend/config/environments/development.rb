@@ -35,6 +35,14 @@ Rails.application.configure do
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
 
+  # Capture all outgoing mail in-browser (no SMTP server needed). View the
+  # verification emails at /letter_opener (engine mounted in routes.rb).
+  config.action_mailer.delivery_method = :letter_opener_web
+
+  # Run mailers inline in development so the letter shows up immediately without
+  # a separate background-job worker.
+  config.active_job.queue_adapter = :inline
+
   # Set localhost to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 

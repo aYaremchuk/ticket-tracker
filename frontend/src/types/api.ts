@@ -73,6 +73,9 @@ export interface Ticket {
   created_by: UserRef
   created_at: string
   modified_at: string
+  // Last editor, derived from activity events (creator if never edited).
+  // Present on single-ticket responses only; the board index omits it.
+  modified_by?: UserRef
   comment_count: number
 }
 
@@ -81,6 +84,21 @@ export interface Comment {
   ticket_id: string
   author: UserRef
   body: string
+  created_at: string
+}
+
+// Activity history entry. `field`/values are null for
+// "created" events; "commented" events carry a body preview in new_value.
+// Values are display text captured at change time (team name, epic title —
+// not ids).
+export interface TicketEvent {
+  id: string
+  ticket_id: string
+  actor: UserRef
+  action: 'created' | 'updated' | 'commented' | 'comment_edited' | 'comment_deleted'
+  field: string | null
+  old_value: string | null
+  new_value: string | null
   created_at: string
 }
 

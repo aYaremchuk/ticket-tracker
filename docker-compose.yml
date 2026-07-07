@@ -4,7 +4,7 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-task_managing_system_development}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -22,9 +22,6 @@ services:
 
   api:
     build: ./backend
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
       RAILS_ENV: ${RAILS_ENV:-development}
       DATABASE_HOST: db
@@ -35,7 +32,9 @@ services:
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-dev_secret_key_base_change_me}
       RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
-      # SMTP (used from M1)
+      # SMTP — used in production for real delivery (e.g. relay1.dataart.com).
+      # In development, mail is captured by letter_opener_web (viewable at
+      # /letter_opener) so no SMTP server is needed to test the verify flow.
       SMTP_ADDRESS: ${SMTP_ADDRESS:-}
       SMTP_PORT: ${SMTP_PORT:-25}
       SMTP_DOMAIN: ${SMTP_DOMAIN:-}
@@ -43,6 +42,14 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION:-}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      # HTTP Basic auth for Swagger UI (/api-docs). Protected whenever these are
+      # set (any env) and always in production. Dev defaults below → docs require
+      # login even in development; override/clear via .env.
+      SWAGGER_USER: ${SWAGGER_USER:-docs}
+      SWAGGER_PASSWORD: ${SWAGGER_PASSWORD:-docs}
+    depends_on:
+      db:
+        condition: service_healthy
     expose:
       - "3000"
 

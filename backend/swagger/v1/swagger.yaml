@@ -1,0 +1,873 @@
+---
+openapi: 3.0.1
+info:
+  title: Ticket Tracker API
+  version: v1
+  description: Authentication (M1) endpoints. Session is a signed HttpOnly SameSite=Lax
+    cookie; authenticated-session writes require an X-CSRF-Token header matching the
+    csrf_token cookie plus a permitted Origin. Public pre-auth endpoints (signup,
+    login, verify_email, resend_verification, password_reset[/confirm]) are CSRF-exempt.
+paths:
+  "/api/comments/{id}":
+    parameters:
+    - name: id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Edit a comment (author only)
+      tags:
+      - Comments
+      description: Updates a comment's body. Author only (403 otherwise). Does NOT
+        bump the ticket's modified_at.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: editing does NOT bump the ticket modified_at
+        '403':
+          description: non-author cannot edit
+        '422':
+          description: blank body
+        '404':
+          description: unknown comment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                  example: Looks good to me.
+              required:
+              - body
+    delete:
+      summary: Delete a comment (author only)
+      tags:
+      - Comments
+      description: Deletes a comment. Author only (403 otherwise). Does NOT bump the
+        ticket's modified_at.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '204':
+          description: deleting does NOT bump the ticket modified_at
+        '403':
+          description: non-author cannot delete
+        '404':
+          description: unknown comment
+  "/api/tickets/{ticket_id}/comments":
+    parameters:
+    - name: ticket_id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    get:
+      summary: List comments for a ticket (oldest first)
+      tags:
+      - Comments
+      description: Returns all comments for a ticket ordered by created_at ASC.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: returns empty array when no comments
+        '404':
+          description: ticket not found
+        '401':
+          description: requires authentication
+    post:
+      summary: Create a comment
+      tags:
+      - Comments
+      description: Creates a comment. author = Current.user. Does NOT bump ticket
+        modified_at.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '201':
+          description: adding comment does NOT bump ticket modified_at
+        '422':
+          description: blank body
+        '404':
+          description: ticket not found
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                  example: Looks good to me.
+              required:
+              - body
+  "/api/csrf":
+    get:
+      summary: Fetch a CSRF token
+      tags:
+      - Auth
+      description: Returns a CSRF token and sets it as a readable SameSite=Lax cookie.
+        The SPA echoes it in X-CSRF-Token on writes (double-submit).
+      responses:
+        '200':
+          description: csrf token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrf_token:
+                    type: string
+                required:
+                - csrf_token
+  "/api/epics":
+    get:
+      summary: List epics for a team (title ASC)
+      tags:
+      - Epics
+      description: Returns all epics for a team ordered by title ascending. team_id
+        query param is required. Requires authenticated + verified session.
+      parameters:
+      - name: team_id
+        in: query
+        format: uuid
+        required: true
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: epic JSON includes all contract fields
+        '400':
+          description: missing team_id param
+        '404':
+          description: team not found
+        '401':
+          description: requires authentication — no session
+    post:
+      summary: Create an epic
+      tags:
+      - Epics
+      description: Creates a new epic for the given team. team_id is fixed at creation.
+        Requires CSRF + verified session.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '201':
+          description: strips whitespace from title
+        '422':
+          description: whitespace-only title
+        '404':
+          description: team not found
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: string
+                  format: uuid
+                  example: 00000000-0000-0000-0000-000000000001
+                title:
+                  type: string
+                  example: Checkout reliability
+                description:
+                  type: string
+                  nullable: true
+                  example: Improve checkout flow end-to-end.
+              required:
+              - team_id
+              - title
+  "/api/epics/{id}":
+    parameters:
+    - name: id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Update an epic
+      tags:
+      - Epics
+      description: Updates title and/or description. team_id is immutable — any team_id
+        in the payload is silently ignored. Requires CSRF + verified session.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: team_id in payload is silently ignored (immutable)
+        '422':
+          description: blank title
+        '404':
+          description: epic not found
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: New title
+                description:
+                  type: string
+                  nullable: true
+    delete:
+      summary: Delete an epic
+      tags:
+      - Epics
+      description: Deletes the epic. Returns 204 on success. Returns 409 epic_has_tickets
+        when the epic has referencing tickets (enforced in M4; currently always succeeds).
+        Returns 404 when the epic does not exist.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '204':
+          description: epic deleted successfully
+        '404':
+          description: epic not found
+        '401':
+          description: requires authentication
+        '409':
+          description: epic has tickets — delete is blocked
+  "/api/login":
+    post:
+      summary: Log in and establish a session
+      tags:
+      - Auth
+      description: Verifies the Argon2id password and email-verified status. On success
+        sets a signed HttpOnly SameSite=Lax session cookie. Public pre-auth endpoint
+        — CSRF-exempt (no CSRF token or Origin required).
+      parameters: []
+      responses:
+        '200':
+          description: login succeeds without a CSRF token (CSRF-exempt)
+        '401':
+          description: unknown email still performs a decoy password verify (no timing
+            enumeration)
+        '403':
+          description: email not verified
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+              required:
+              - email
+              - password
+  "/api/logout":
+    delete:
+      summary: Log out and destroy the session
+      tags:
+      - Auth
+      security:
+      - session_cookie: []
+      description: Destroys the current server-side session and clears the cookie.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      responses:
+        '204':
+          description: logged out
+        '401':
+          description: no active session
+  "/api/me":
+    get:
+      summary: Return the current user (or null)
+      tags:
+      - Auth
+      description: 'Public session-restore probe. Always 200: returns the user when
+        a valid verified session exists, or null when logged out.'
+      responses:
+        '200':
+          description: returns the current user or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type:
+                    - object
+                    - 'null'
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                    required:
+                    - id
+                    - email
+                required:
+                - user
+  "/api/password_reset":
+    post:
+      summary: Request a password reset link
+      tags:
+      - Auth
+      description: Always returns 202 (no account enumeration). If the account exists,
+        issues a 24h single-use reset token and emails a link. Public pre-auth endpoint
+        — CSRF-exempt (no CSRF token or Origin required).
+      parameters: []
+      responses:
+        '202':
+          description: unknown email — still 202, no email sent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+              required:
+              - email
+  "/api/password_reset/confirm":
+    post:
+      summary: Confirm a password reset with a token
+      tags:
+      - Auth
+      description: Consumes a valid, unexpired, unconsumed token and sets a new Argon2id
+        password (>= 8). Bad/expired/used token -> 410 token_invalid; short password
+        -> 422. Public pre-auth endpoint — CSRF-exempt (no CSRF token or Origin required).
+      parameters: []
+      responses:
+        '200':
+          description: revokes the user's existing sessions
+        '410':
+          description: unknown/invalid token
+        '422':
+          description: password too short
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  example: abc123resettoken
+                password:
+                  type: string
+                  example: newpassword456
+              required:
+              - token
+              - password
+  "/api/resend_verification":
+    post:
+      summary: Resend the verification email
+      tags:
+      - Auth
+      description: Invalidates prior unused tokens and issues a new one for an unverified
+        account. Always returns 202 (no account enumeration). Public pre-auth endpoint
+        — CSRF-exempt (no CSRF token or Origin required).
+      parameters: []
+      responses:
+        '202':
+          description: already-verified email — still 202, no email sent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+              required:
+              - email
+  "/api/signup":
+    post:
+      summary: Register a new (unverified) account
+      tags:
+      - Auth
+      description: Creates an unverified user, issues a 24h single-use verification
+        token, and emails a verification link. Public pre-auth endpoint — CSRF-exempt
+        (no CSRF token or Origin required).
+      parameters: []
+      responses:
+        '201':
+          description: email is trimmed and lower-cased
+        '422':
+          description: invalid email
+        '409':
+          description: email already registered (case-insensitive)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: password123
+              required:
+              - email
+              - password
+  "/api/teams":
+    get:
+      summary: List all teams (name ASC)
+      tags:
+      - Teams
+      description: Returns all teams ordered by name ascending. Requires an authenticated
+        + verified session cookie.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: returns empty array when no teams exist
+        '401':
+          description: requires authentication — no session
+    post:
+      summary: Create a team
+      tags:
+      - Teams
+      description: Creates a new team. Name is stripped and must be unique case-insensitively.
+        Requires CSRF + verified session.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '201':
+          description: strips whitespace from name
+        '422':
+          description: whitespace-only name
+        '409':
+          description: duplicate name (case-insensitive)
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Payments Team
+              required:
+              - name
+  "/api/teams/{id}":
+    parameters:
+    - name: id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Rename a team
+      tags:
+      - Teams
+      description: Updates the team name. Same validation rules as POST.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: team renamed successfully
+        '422':
+          description: blank name
+        '409':
+          description: rename to an existing team name (case-insensitive)
+        '404':
+          description: team not found
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: New Name
+              required:
+              - name
+    delete:
+      summary: Delete a team
+      tags:
+      - Teams
+      description: Deletes the team. Returns 204 on success. Returns 409 team_has_references
+        when the team has epics or tickets (enforced once M3/M4 tables exist; currently
+        always succeeds). Returns 404 when the team does not exist.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '204':
+          description: team deleted successfully
+        '404':
+          description: team not found
+        '401':
+          description: requires authentication
+        '409':
+          description: team has tickets — delete is blocked
+  "/api/tickets":
+    get:
+      summary: List tickets for a team
+      tags:
+      - Tickets
+      description: 'Returns all tickets for a team ordered by modified_at DESC. team_id
+        required. Optional filters: type, epic_id, q (case-insensitive title substring).'
+      parameters:
+      - name: team_id
+        in: query
+        format: uuid
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: epic_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: returns empty array when team has no tickets
+        '400':
+          description: missing team_id param
+        '401':
+          description: requires authentication
+    post:
+      summary: Create a ticket
+      tags:
+      - Tickets
+      description: Creates a new ticket. state defaults to new. 422 on blank title/body,
+        bad enum, or epic_team_mismatch. 404 for unknown team/epic.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '201':
+          description: ticket created with epic
+        '422':
+          description: epic_team_mismatch on create
+        '404':
+          description: epic not found
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team_id:
+                  type: string
+                  format: uuid
+                  example: 00000000-0000-0000-0000-000000000001
+                type:
+                  type: string
+                  enum:
+                  - bug
+                  - feature
+                  - fix
+                  example: bug
+                title:
+                  type: string
+                  example: Login page crashes on Safari
+                body:
+                  type: string
+                  example: 'Steps to reproduce: open /login in Safari 17.'
+                epic_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  example: 00000000-0000-0000-0000-000000000002
+              required:
+              - team_id
+              - type
+              - title
+              - body
+  "/api/tickets/{id}":
+    parameters:
+    - name: id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Get a single ticket
+      tags:
+      - Tickets
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: returns the ticket
+        '404':
+          description: ticket not found
+        '401':
+          description: requires authentication
+    patch:
+      summary: Update a ticket
+      tags:
+      - Tickets
+      description: Updates ticket fields. modified_at only bumped on real change.
+        Changing team_id requires epic_id null or in the new team.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '200':
+          description: modified_at does NOT advance on unchanged save
+        '422':
+          description: invalid state value
+        '404':
+          description: ticket not found
+        '401':
+          description: requires authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                  - bug
+                  - feature
+                  - fix
+                  example: bug
+                state:
+                  type: string
+                  example: in_progress
+                title:
+                  type: string
+                  example: Login page crashes on Safari
+                body:
+                  type: string
+                  example: 'Steps to reproduce: open /login in Safari 17.'
+                team_id:
+                  type: string
+                  format: uuid
+                  example: 00000000-0000-0000-0000-000000000001
+                epic_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  example: 00000000-0000-0000-0000-000000000002
+    delete:
+      summary: Delete a ticket
+      tags:
+      - Tickets
+      description: Deletes the ticket and cascades its comments. Returns 204.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      security:
+      - session_cookie: []
+      responses:
+        '204':
+          description: ticket deleted (comments cascade)
+        '404':
+          description: ticket not found
+        '401':
+          description: requires authentication
+  "/api/verify_email":
+    post:
+      summary: Verify an email address with a token
+      tags:
+      - Auth
+      description: Consumes a valid, unexpired, unconsumed token and marks the user
+        verified. Expired/used/invalid tokens return 410 token_invalid. Public pre-auth
+        endpoint — CSRF-exempt (no CSRF token or Origin required).
+      parameters: []
+      responses:
+        '200':
+          description: email verified without a CSRF token (CSRF-exempt)
+        '410':
+          description: unknown/invalid token
+        '422':
+          description: missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  example: abc123verifytoken
+              required:
+              - token
+components:
+  securitySchemes:
+    session_cookie:
+      type: apiKey
+      in: cookie
+      name: session
+servers:
+- url: "{scheme}://{host}"
+  variables:
+    scheme:
+      default: http
+    host:
+      default: localhost:8080

@@ -2,15 +2,11 @@
 
 require "swagger_helper"
 
-# rubocop:disable RSpec/EmptyExampleGroup, RSpec/VariableName, RSpec/MultipleMemoizedHelpers
+# rubocop:disable RSpec/EmptyExampleGroup
 RSpec.describe("Api::PasswordReset", type: :request) do
-  before do # rubocop:disable RSpec/ScatteredSetup
-    ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN
-    get "/api/csrf"
-  end
-
-  let(:"X-CSRF-Token") { response.parsed_body["csrf_token"] }
-  let(:Origin) { AuthHelpers::ALLOWED_ORIGIN }
+  # Public pre-auth endpoints: CSRF-exempt (no session to forge). No CSRF token
+  # or Origin required.
+  before { ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN } # rubocop:disable RSpec/ScatteredSetup
 
   path "/api/password_reset" do
     post "Request a password reset link" do
@@ -18,16 +14,15 @@ RSpec.describe("Api::PasswordReset", type: :request) do
       consumes "application/json"
       produces "application/json"
       description "Always returns 202 (no account enumeration). If the account " \
-        "exists, issues a 24h single-use reset token and emails a link."
+        "exists, issues a 24h single-use reset token and emails a link. Public " \
+        "pre-auth endpoint — CSRF-exempt (no CSRF token or Origin required)."
       parameter name: :body, in: :body, schema: {
         type: :object,
-        properties: { email: { type: :string } },
+        properties: { email: { type: :string, example: "user@example.com" } },
         required: ["email"],
       }
-      parameter name: :Origin, in: :header, schema: { type: :string }
-      parameter name: "X-CSRF-Token", in: :header, schema: { type: :string }
 
-      response "202", "existing account — reset email sent" do
+      response "202", "existing account — reset email sent (no CSRF token required)" do
         let(:user) { create(:user) }
         let(:body) { { email: user.email } }
 
@@ -66,19 +61,18 @@ RSpec.describe("Api::PasswordReset", type: :request) do
       produces "application/json"
       description "Consumes a valid, unexpired, unconsumed token and sets a new " \
         "Argon2id password (>= 8). Bad/expired/used token -> 410 token_invalid; " \
-        "short password -> 422."
+        "short password -> 422. Public pre-auth endpoint — CSRF-exempt (no CSRF " \
+        "token or Origin required)."
       parameter name: :body, in: :body, schema: {
         type: :object,
         properties: {
-          token: { type: :string },
-          password: { type: :string },
+          token: { type: :string, example: "abc123resettoken" },
+          password: { type: :string, example: "newpassword456" },
         },
         required: ["token", "password"],
       }
-      parameter name: :Origin, in: :header, schema: { type: :string }
-      parameter name: "X-CSRF-Token", in: :header, schema: { type: :string }
 
-      response "200", "password reset succeeds" do
+      response "200", "password reset succeeds without a CSRF token (CSRF-exempt)" do
         let(:user) { create(:user, password: "password123") }
         let(:token) { PasswordResetToken.issue!(user) }
         let(:body) { { token: token.raw_token, password: "newpassword456" } }
@@ -152,4 +146,4 @@ RSpec.describe("Api::PasswordReset", type: :request) do
     end
   end
 end
-# rubocop:enable RSpec/EmptyExampleGroup, RSpec/VariableName, RSpec/MultipleMemoizedHelpers
+# rubocop:enable RSpec/EmptyExampleGroup

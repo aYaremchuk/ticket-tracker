@@ -2,15 +2,12 @@
 
 require "swagger_helper"
 
-# rubocop:disable RSpec/EmptyExampleGroup, RSpec/VariableName, RSpec/MultipleMemoizedHelpers
+# rubocop:disable RSpec/EmptyExampleGroup
 RSpec.describe("Api::VerifyEmail", type: :request) do
-  before do
-    ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN
-    get "/api/csrf"
-  end
+  # Public pre-auth endpoint: CSRF-exempt (no session to forge). No CSRF token
+  # or Origin required.
+  before { ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN }
 
-  let(:"X-CSRF-Token") { response.parsed_body["csrf_token"] }
-  let(:Origin) { AuthHelpers::ALLOWED_ORIGIN }
   let(:user) { create(:user, :unverified) }
 
   path "/api/verify_email" do
@@ -19,16 +16,15 @@ RSpec.describe("Api::VerifyEmail", type: :request) do
       consumes "application/json"
       produces "application/json"
       description "Consumes a valid, unexpired, unconsumed token and marks the " \
-        "user verified. Expired/used/invalid tokens return 410 token_invalid."
+        "user verified. Expired/used/invalid tokens return 410 token_invalid. " \
+        "Public pre-auth endpoint — CSRF-exempt (no CSRF token or Origin required)."
       parameter name: :body, in: :body, schema: {
         type: :object,
-        properties: { token: { type: :string } },
+        properties: { token: { type: :string, example: "abc123verifytoken" } },
         required: ["token"],
       }
-      parameter name: :Origin, in: :header, schema: { type: :string }
-      parameter name: "X-CSRF-Token", in: :header, schema: { type: :string }
 
-      response "200", "email verified" do
+      response "200", "email verified without a CSRF token (CSRF-exempt)" do
         let(:token) { EmailVerificationToken.issue!(user) }
         let(:body) { { token: token.raw_token } }
 
@@ -45,11 +41,7 @@ RSpec.describe("Api::VerifyEmail", type: :request) do
           t = EmailVerificationToken.issue!(user)
           post "/api/verify_email",
             params: { token: t.raw_token }.to_json,
-            headers: {
-              "Content-Type" => "application/json",
-              "Origin" => AuthHelpers::ALLOWED_ORIGIN,
-              "X-CSRF-Token" => response.parsed_body["csrf_token"],
-            }
+            headers: { "Content-Type" => "application/json" }
           t
         end
         let(:body) { { token: issued.raw_token } }
@@ -91,4 +83,4 @@ RSpec.describe("Api::VerifyEmail", type: :request) do
     end
   end
 end
-# rubocop:enable RSpec/EmptyExampleGroup, RSpec/VariableName, RSpec/MultipleMemoizedHelpers
+# rubocop:enable RSpec/EmptyExampleGroup

@@ -3,8 +3,30 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Interactive API docs (OpenAPI spec generated from rswag request specs).
-  mount Rswag::Ui::Engine => "/api-docs"
-  mount Rswag::Api::Engine => "/api-docs"
+  # In production the UI *and* the raw spec are protected by HTTP Basic auth
+  # (SWAGGER_USER / SWAGGER_PASSWORD). Fail-closed: if creds are not configured
+  # in production, all credentials are rejected. Open in dev/test for QA.
+  swagger_user = ENV["SWAGGER_USER"].to_s
+  swagger_pass = ENV["SWAGGER_PASSWORD"].to_s
+  # Protect the docs whenever credentials are configured, and ALWAYS in
+  # production (fail-closed: if prod has no creds, every credential is rejected).
+  protect_docs = swagger_user.present? && swagger_pass.present?
+  protect_docs ||= Rails.env.production?
+
+  docs_ui = Rswag::Ui::Engine
+  docs_api = Rswag::Api::Engine
+  if protect_docs
+    swagger_auth = lambda do |user, password|
+      next false if swagger_user.empty? || swagger_pass.empty? # fail closed
+
+      Rack::Utils.secure_compare(user.to_s, swagger_user) &
+        Rack::Utils.secure_compare(password.to_s, swagger_pass)
+    end
+    docs_ui = Rack::Auth::Basic.new(Rswag::Ui::Engine, "API Docs", &swagger_auth)
+    docs_api = Rack::Auth::Basic.new(Rswag::Api::Engine, "API Docs", &swagger_auth)
+  end
+  mount docs_ui => "/api-docs"
+  mount docs_api => "/api-docs"
 
   # Development-only inbox for captured verification emails.
   if Rails.env.development?

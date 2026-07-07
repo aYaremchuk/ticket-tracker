@@ -6,6 +6,9 @@ module Api
   # cookie. Logout destroys the session and clears the cookie.
   class SessionsController < ApplicationController
     allow_unauthenticated_access only: :create
+    # Exempt login (public pre-auth) only. Logout is authenticated, so it keeps
+    # full CSRF + Origin protection.
+    skip_csrf_protection only: :create
 
     def create
       user = User.find_by(email: params[:email].to_s.strip.downcase)

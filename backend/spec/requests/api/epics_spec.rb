@@ -130,9 +130,9 @@ RSpec.describe("Api::Epics", type: :request) do
       parameter name: :epic, in: :body, schema: {
         type: :object,
         properties: {
-          team_id: { type: :string, format: :uuid },
+          team_id: { type: :string, format: :uuid, example: "00000000-0000-0000-0000-000000000001" },
           title: { type: :string, example: "Checkout reliability" },
-          description: { type: :string, nullable: true },
+          description: { type: :string, nullable: true, example: "Improve checkout flow end-to-end." },
         },
         required: ["team_id", "title"],
       }

@@ -15,6 +15,14 @@ module ErrorRendering
     rescue_from ActionController::ParameterMissing do |e|
       render_error(code: "bad_request", message: e.message, status: :bad_request)
     end
+
+    rescue_from ActionDispatch::Http::Parameters::ParseError do
+      render_error(
+        code: "bad_request",
+        message: "Malformed JSON in request body",
+        status: :bad_request,
+      )
+    end
   end
 
   private

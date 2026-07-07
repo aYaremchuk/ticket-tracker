@@ -17,8 +17,12 @@
 #      X-CSRF-Token header on writes. The server checks header == cookie. A
 #      cross-site attacker cannot read the cookie, so cannot forge the header.
 #
-# Safe methods (GET/HEAD/OPTIONS) are never checked. Controllers may skip the
-# whole thing (e.g. a webhook) via `skip_before_action :verify_request_origin`.
+# Safe methods (GET/HEAD/OPTIONS) are never checked. Controllers opt specific
+# actions out of the whole CSRF layer with `skip_csrf_protection` (see below) —
+# used only for public *pre-authentication* endpoints (signup, login,
+# email verification, password reset) that have no ambient session to forge and
+# are already same-site-protected by the SameSite=Lax session cookie. Every
+# authenticated (session-based) write keeps full CSRF + Origin enforcement.
 module RequestForgeryProtection
   extend ActiveSupport::Concern
 
@@ -29,6 +33,19 @@ module RequestForgeryProtection
   included do
     before_action :verify_request_origin
     before_action :verify_csrf_token
+  end
+
+  class_methods do
+    # Declares actions that are exempt from CSRF + Origin protection. Mirrors
+    # Authentication's `allow_unauthenticated_access`. Intended for public
+    # pre-auth endpoints only: with no session cookie to forge, the double-submit
+    # token + Origin check add friction ("fetch a CSRF token just to log in")
+    # without meaningfully raising the bar, and SameSite=Lax already blocks the
+    # classic login-CSRF vector. Authenticated writes must NEVER use this.
+    def skip_csrf_protection(**options)
+      skip_before_action(:verify_request_origin, **options)
+      skip_before_action(:verify_csrf_token, **options)
+    end
   end
 
   private

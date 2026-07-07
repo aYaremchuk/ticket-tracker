@@ -28,6 +28,26 @@ request specs, so it stays in sync with the tested behavior:
 bundle exec rails rswag:specs:swaggerize   # regenerate the OpenAPI spec
 ```
 
+**Access:** the UI *and* the raw OpenAPI spec are protected by **HTTP Basic auth**
+whenever `SWAGGER_USER` / `SWAGGER_PASSWORD` are set, and **always in production**
+(fail-closed if unset, so docs are never exposed by accident). The dev compose
+defaults to **`docs` / `docs`**; clear both env vars to open the docs in
+development. Verified: no/invalid creds → `401` (with a `WWW-Authenticate`
+challenge), correct creds → `200`. See "Authorizing in Swagger" below for the
+cookie+CSRF handshake used to exercise the endpoints themselves.
+
+### Authorizing in Swagger (cookie + CSRF)
+Auth is a session cookie + CSRF token, not a bearer token, so:
+1. `GET /api/csrf` → *Execute* → copy the `csrf_token`.
+2. `POST /api/login` → *Try it out* → enter a **verified** user's email/password,
+   paste the token into the **`X-CSRF-Token`** field → *Execute* (sets the session cookie).
+3. Call any endpoint via *Try it out*. GETs work automatically (same-origin cookie);
+   for writes, paste the `csrf_token` into that operation's `X-CSRF-Token` field.
+
+(The green "Authorize" `session_cookie` dialog can be ignored — the cookie is
+HttpOnly and set automatically by login. Must be accessed on the app origin,
+`localhost:8080`, for the cookie + Origin checks to pass.)
+
 ## Run
 
 ### Via Docker (from the repo root)

@@ -7,6 +7,8 @@ module Api
   #                                   account enumeration).
   class EmailVerificationsController < ApplicationController
     allow_unauthenticated_access
+    # Public pre-auth endpoints: no session to forge, so CSRF adds only friction.
+    skip_csrf_protection
 
     def verify
       token_value = params[:token]

@@ -2,15 +2,11 @@
 
 require "swagger_helper"
 
-# rubocop:disable RSpec/EmptyExampleGroup, RSpec/VariableName
+# rubocop:disable RSpec/EmptyExampleGroup
 RSpec.describe("Api::Login", type: :request) do
-  before do # rubocop:disable RSpec/ScatteredSetup
-    ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN
-    get "/api/csrf"
-  end
-
-  let(:"X-CSRF-Token") { response.parsed_body["csrf_token"] }
-  let(:Origin) { AuthHelpers::ALLOWED_ORIGIN }
+  # Public pre-auth endpoint: CSRF-exempt (no session to forge). No CSRF token
+  # or Origin is required to log in.
+  before { ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN } # rubocop:disable RSpec/ScatteredSetup
 
   path "/api/login" do
     post "Log in and establish a session" do
@@ -18,19 +14,18 @@ RSpec.describe("Api::Login", type: :request) do
       consumes "application/json"
       produces "application/json"
       description "Verifies the Argon2id password and email-verified status. On " \
-        "success sets a signed HttpOnly SameSite=Lax session cookie."
+        "success sets a signed HttpOnly SameSite=Lax session cookie. Public " \
+        "pre-auth endpoint — CSRF-exempt (no CSRF token or Origin required)."
       parameter name: :credentials, in: :body, schema: {
         type: :object,
         properties: {
-          email: { type: :string },
-          password: { type: :string },
+          email: { type: :string, example: "user@example.com" },
+          password: { type: :string, example: "password123" },
         },
         required: ["email", "password"],
       }
-      parameter name: :Origin, in: :header, schema: { type: :string }
-      parameter name: "X-CSRF-Token", in: :header, schema: { type: :string }
 
-      response "200", "login succeeds and sets the session cookie" do
+      response "200", "login succeeds without a CSRF token (CSRF-exempt)" do
         let(:user) { create(:user, password: "password123") }
         let(:credentials) { { email: user.email, password: "password123" } }
 
@@ -89,4 +84,4 @@ RSpec.describe("Api::Login", type: :request) do
     end
   end
 end
-# rubocop:enable RSpec/EmptyExampleGroup, RSpec/VariableName
+# rubocop:enable RSpec/EmptyExampleGroup

@@ -7,6 +7,8 @@ module Api
   #   POST /api/password_reset/confirm  — consume a token and set a new password.
   class PasswordResetsController < ApplicationController
     allow_unauthenticated_access
+    # Public pre-auth endpoints: no session to forge, so CSRF adds only friction.
+    skip_csrf_protection
 
     # POST /api/password_reset { email } -> 202 always.
     def create

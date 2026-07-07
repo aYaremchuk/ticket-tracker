@@ -14,8 +14,10 @@ RSpec.configure do |config|
         title: "Ticket Tracker API",
         version: "v1",
         description: "Authentication (M1) endpoints. Session is a signed " \
-          "HttpOnly SameSite=Lax cookie; writes require an X-CSRF-Token header " \
-          "matching the csrf_token cookie plus a permitted Origin.",
+          "HttpOnly SameSite=Lax cookie; authenticated-session writes require an " \
+          "X-CSRF-Token header matching the csrf_token cookie plus a permitted " \
+          "Origin. Public pre-auth endpoints (signup, login, verify_email, " \
+          "resend_verification, password_reset[/confirm]) are CSRF-exempt.",
       },
       paths: {},
       components: {

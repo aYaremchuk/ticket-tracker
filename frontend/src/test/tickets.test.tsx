@@ -24,11 +24,12 @@ import { ApiError } from '../api/client.ts'
 import * as commentsApi from '../api/comments.ts'
 import * as epicsApi from '../api/epics.ts'
 import * as teamsApi from '../api/teams.ts'
+import * as ticketEventsApi from '../api/ticketEvents.ts'
 import * as ticketsApi from '../api/tickets.ts'
 import { TicketCreatePage } from '../pages/TicketCreatePage.tsx'
 import { TicketDetailPage } from '../pages/TicketDetailPage.tsx'
 import authReducer from '../store/authSlice.ts'
-import type { Comment, Epic, Team, Ticket } from '../types/api.ts'
+import type { Comment, Epic, Team, Ticket, TicketEvent } from '../types/api.ts'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -84,7 +85,41 @@ const TICKET: Ticket = {
   created_by: { id: 'user-1', email: 'alex@example.com' },
   created_at: '2026-06-22T09:15:00Z',
   modified_at: '2026-06-23T12:40:00Z',
+  modified_by: { id: 'user-2', email: 'kim@example.com' },
   comment_count: 1,
+}
+
+const EVENT_CREATED: TicketEvent = {
+  id: 'event-1',
+  ticket_id: 'ticket-1',
+  actor: { id: 'user-1', email: 'alex@example.com' },
+  action: 'created',
+  field: null,
+  old_value: null,
+  new_value: null,
+  created_at: '2026-06-22T09:15:00Z',
+}
+
+const EVENT_STATE_CHANGED: TicketEvent = {
+  id: 'event-2',
+  ticket_id: 'ticket-1',
+  actor: { id: 'user-2', email: 'kim@example.com' },
+  action: 'updated',
+  field: 'state',
+  old_value: 'new',
+  new_value: 'in_progress',
+  created_at: '2026-06-23T12:40:00Z',
+}
+
+const EVENT_COMMENTED: TicketEvent = {
+  id: 'event-3',
+  ticket_id: 'ticket-1',
+  actor: { id: 'user-1', email: 'alex@example.com' },
+  action: 'commented',
+  field: null,
+  old_value: null,
+  new_value: 'Reproduced in Chrome.',
+  created_at: '2026-06-24T08:00:00Z',
 }
 
 const COMMENT_1: Comment = {
@@ -269,6 +304,7 @@ describe('TicketDetailPage', () => {
     vi.spyOn(teamsApi, 'listTeams').mockResolvedValue([TEAM_A])
     vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
     vi.spyOn(commentsApi, 'listComments').mockResolvedValue([COMMENT_1])
+    vi.spyOn(ticketEventsApi, 'listTicketEvents').mockResolvedValue([EVENT_CREATED])
 
     renderDetailPage()
 
@@ -276,8 +312,9 @@ describe('TicketDetailPage', () => {
       expect(screen.getByText(/TCK-42/)).toBeInTheDocument()
     })
 
-    // Email local-part should appear.
+    // Email local-parts should appear for both creator and last modifier.
     expect(screen.getByText(/Created by alex/i)).toBeInTheDocument()
+    expect(screen.getByText(/Modified .* by kim/i)).toBeInTheDocument()
   })
 
   // -------------------------------------------------------------------------
@@ -295,6 +332,7 @@ describe('TicketDetailPage', () => {
     vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
     vi.spyOn(commentsApi, 'listComments').mockResolvedValue([COMMENT_1])
     vi.spyOn(commentsApi, 'addComment').mockResolvedValue(newComment)
+    vi.spyOn(ticketEventsApi, 'listTicketEvents').mockResolvedValue([EVENT_CREATED])
 
     renderDetailPage()
 
@@ -322,11 +360,64 @@ describe('TicketDetailPage', () => {
   })
 
   // -------------------------------------------------------------------------
+  it('activity panel shows history newest-first with human-readable values', async () => {
+    vi.spyOn(ticketsApi, 'getTicket').mockResolvedValue(TICKET)
+    vi.spyOn(teamsApi, 'listTeams').mockResolvedValue([TEAM_A])
+    vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
+    vi.spyOn(commentsApi, 'listComments').mockResolvedValue([])
+    vi.spyOn(ticketEventsApi, 'listTicketEvents').mockResolvedValue([
+      EVENT_COMMENTED,
+      EVENT_STATE_CHANGED,
+      EVENT_CREATED,
+    ])
+
+    renderDetailPage()
+
+    // Wait for the events to load into the Activity panel.
+    await waitFor(() => {
+      expect(screen.getByText('New → In Progress')).toBeInTheDocument()
+    })
+
+    const panel = screen.getByText('Activity').closest('div') as HTMLElement
+
+    // Updated event: actor, humanized field + enum values ("new" → "New").
+    expect(within(panel).getByText('kim')).toBeInTheDocument()
+    expect(within(panel).getByText(/changed State/)).toBeInTheDocument()
+
+    // Comment event: "commented" with the body preview.
+    expect(within(panel).getByText(/commented/)).toBeInTheDocument()
+    expect(within(panel).getByText('“Reproduced in Chrome.”')).toBeInTheDocument()
+
+    // Created event present, and events listed newest-first.
+    expect(within(panel).getByText(/created this ticket/)).toBeInTheDocument()
+    const items = within(panel).getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent(/commented/)
+    expect(items[1]).toHaveTextContent(/changed State/)
+    expect(items[2]).toHaveTextContent(/created this ticket/)
+  })
+
+  // -------------------------------------------------------------------------
+  it('activity panel renders the empty state when there are no events', async () => {
+    vi.spyOn(ticketsApi, 'getTicket').mockResolvedValue(TICKET)
+    vi.spyOn(teamsApi, 'listTeams').mockResolvedValue([TEAM_A])
+    vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
+    vi.spyOn(commentsApi, 'listComments').mockResolvedValue([])
+    vi.spyOn(ticketEventsApi, 'listTicketEvents').mockResolvedValue([])
+
+    renderDetailPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('No activity yet.')).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   it('delete confirm → navigates to /board', async () => {
     vi.spyOn(ticketsApi, 'getTicket').mockResolvedValue(TICKET)
     vi.spyOn(teamsApi, 'listTeams').mockResolvedValue([TEAM_A])
     vi.spyOn(epicsApi, 'listEpics').mockResolvedValue([EPIC_A])
     vi.spyOn(commentsApi, 'listComments').mockResolvedValue([])
+    vi.spyOn(ticketEventsApi, 'listTicketEvents').mockResolvedValue([EVENT_CREATED])
     vi.spyOn(ticketsApi, 'deleteTicket').mockResolvedValue(undefined)
 
     renderDetailPage()

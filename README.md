@@ -14,6 +14,8 @@ Built for the DataArt hackathon requirements.
 - **Tickets:** create / view / edit / delete with type (bug/feature/fix), a fixed
   five-state workflow, optional same-team epic, title & body.
 - **Comments:** chronological, attributed; authors can edit/delete their own.
+- **Activity history:** every ticket records who created it, each field/state
+  change (old → new), and comment adds/edits/deletes — newest-first on the ticket page.
 - **Board:** per-team five-column view with drag-and-drop state changes (persisted,
   with rollback on failure), plus type/epic filters and case-insensitive title search.
 

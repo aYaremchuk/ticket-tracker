@@ -28,9 +28,11 @@ import {
   useUpdateComment,
 } from '../hooks/useComments.ts'
 import { friendlyTicketsError, useDeleteTicket, useTicket, useUpdateTicket } from '../hooks/useTickets.ts'
+import { useTicketEvents } from '../hooks/useTicketEvents.ts'
 import { useAppSelector } from '../store/index.ts'
+import { TICKET_STATE_LABELS, TICKET_TYPE_LABELS } from '../types/api.ts'
 import type { TicketFormValues } from '../components/TicketForm.tsx'
-import type { Comment } from '../types/api.ts'
+import type { Comment, TicketEvent, TicketState, TicketType } from '../types/api.ts'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -380,6 +382,121 @@ function CommentsPanel({ ticketId }: CommentsPanelProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Activity history panel — read-only, newest first
+// ---------------------------------------------------------------------------
+
+/** Human label for an event's field ("state" → "State"). */
+const EVENT_FIELD_LABELS: Record<string, string> = {
+  type: 'Type',
+  state: 'State',
+  team: 'Team',
+  epic: 'Epic',
+  title: 'Title',
+  body: 'Body',
+}
+
+/**
+ * Display text for a stored event value. State/type events store canonical
+ * enum values; map them to the human labels used everywhere else in the UI.
+ */
+function displayEventValue(field: string | null, value: string | null): string {
+  if (value === null || value === '') return 'None'
+  if (field === 'state') return TICKET_STATE_LABELS[value as TicketState] ?? value
+  if (field === 'type') return TICKET_TYPE_LABELS[value as TicketType] ?? value
+  return value
+}
+
+const EVENT_DESCRIPTIONS: Record<TicketEvent['action'], (event: TicketEvent) => string> = {
+  created: () => 'created this ticket',
+  commented: () => 'commented',
+  comment_edited: () => 'edited a comment',
+  comment_deleted: () => 'deleted a comment',
+  updated: (event) => `changed ${EVENT_FIELD_LABELS[event.field ?? ''] ?? event.field}`,
+}
+
+/** Second line under the event description, when the action carries values. */
+function eventValueLine(event: TicketEvent): string | null {
+  switch (event.action) {
+    case 'updated':
+      return `${displayEventValue(event.field, event.old_value)} → ${displayEventValue(event.field, event.new_value)}`
+    case 'commented':
+      return event.new_value ? `“${event.new_value}”` : null
+    case 'comment_edited':
+      return `“${event.old_value ?? ''}” → “${event.new_value ?? ''}”`
+    case 'comment_deleted':
+      return event.old_value ? `“${event.old_value}”` : null
+    case 'created':
+      return null
+  }
+}
+
+function ActivityItem({ event }: { event: TicketEvent }) {
+  const actor = emailLocalPart(event.actor.email)
+  const valueLine = eventValueLine(event)
+
+  return (
+    <li className="border-b border-slate-100 pb-3 text-sm last:border-b-0 last:pb-0">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-slate-700">
+          <span className="font-bold text-slate-900" title={event.actor.email}>
+            {actor}
+          </span>{' '}
+          {EVENT_DESCRIPTIONS[event.action](event)}
+        </p>
+        <span className="shrink-0 text-xs text-slate-500">
+          {formatTimestamp(event.created_at)}
+        </span>
+      </div>
+      {valueLine && (
+        <p className="mt-1 truncate text-xs text-slate-500" title={valueLine}>
+          {valueLine}
+        </p>
+      )}
+    </li>
+  )
+}
+
+function ActivityPanel({ ticketId }: { ticketId: string }) {
+  const { data: events, isLoading, error } = useTicketEvents(ticketId)
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-bold tracking-tight text-slate-900">
+        Activity
+      </h2>
+
+      {isLoading && (
+        <div className="mt-4 flex justify-center">
+          <span
+            className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"
+            aria-label="Loading activity"
+            role="status"
+          />
+        </div>
+      )}
+
+      {!isLoading && error && (
+        <p role="alert" className="mt-4 text-sm text-red-600">
+          {error.message}
+        </p>
+      )}
+
+      {!isLoading && !error && events && events.length === 0 && (
+        <p className="mt-4 text-sm text-slate-500">No activity yet.</p>
+      )}
+
+      {!isLoading && !error && events && events.length > 0 && (
+        <ul className="mt-4 space-y-3">
+          {events.map((event) => (
+            <ActivityItem key={event.id} event={event} />
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -503,6 +620,7 @@ export function TicketDetailPage() {
             <span aria-hidden="true" className="mx-2">•</span>
             {/* Modified reflects ticket saves only, NOT comment additions */}
             Modified {formatTimestamp(ticket.modified_at)}
+            {ticket.modified_by && ` by ${emailLocalPart(ticket.modified_by.email)}`}
           </p>
           <div className="flex gap-3">
             <Button
@@ -543,8 +661,13 @@ export function TicketDetailPage() {
             </form>
           </Card>
 
-          {/* Right: comments */}
-          {id && <CommentsPanel ticketId={id} />}
+          {/* Right: comments + activity history */}
+          {id && (
+            <div className="space-y-6">
+              <CommentsPanel ticketId={id} />
+              <ActivityPanel ticketId={id} />
+            </div>
+          )}
         </div>
       </div>
 

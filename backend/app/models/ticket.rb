@@ -30,16 +30,26 @@ class Ticket < ApplicationRecord
   belongs_to :created_by, class_name: "User"
 
   has_many :comments, dependent: :destroy
+  # DB also cascades (ON DELETE CASCADE); delete_all skips per-row callbacks.
+  has_many :ticket_events, dependent: :delete_all
 
   before_validation :strip_fields
   before_create     :set_modified_at
+  after_create      :record_created_event
   before_update     :advance_modified_at_if_changed
+  after_update      :record_updated_events
 
   validates :title, presence: true
   validates :body,  presence: true
   validates :ticket_type, presence: true, inclusion: { in: TICKET_TYPES, message: "must be bug, feature, or fix" }
   validates :state,       presence: true, inclusion: { in: TICKET_STATES, message: "must be a valid state" }
   validate  :epic_belongs_to_team
+
+  # Who last changed the ticket: the actor of the most recent recorded update
+  # event, falling back to the creator when the ticket has never been edited.
+  def modified_by
+    ticket_events.where(action: "updated").order(created_at: :desc, id: :desc).first&.actor || created_by
+  end
 
   private
 
@@ -58,6 +68,29 @@ class Ticket < ApplicationRecord
     return unless MODIFIED_TRACKED_ATTRS.any? { |attr| send(:"#{attr}_changed?") }
 
     self.modified_at = Time.current
+  end
+
+  # Activity events reuse the same tracked-attribute set as modified_at, so a
+  # no-op save records nothing.
+
+  def record_created_event
+    # Fallback covers tickets built outside a request (specs, console).
+    ticket_events.create!(actor: Current.user || created_by, action: "created")
+  end
+
+  def record_updated_events
+    actor = Current.user
+    return if actor.blank?
+
+    saved_changes.slice(*MODIFIED_TRACKED_ATTRS).each do |attr, (old_value, new_value)|
+      ticket_events.create!(
+        actor: actor,
+        action: "updated",
+        field: TicketEvent::API_FIELD_NAMES.fetch(attr, attr),
+        old_value: TicketEvent.display_value(attr, old_value),
+        new_value: TicketEvent.display_value(attr, new_value),
+      )
+    end
   end
 
   def epic_belongs_to_team

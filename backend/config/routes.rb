@@ -60,6 +60,7 @@ Rails.application.routes.draw do
     # --- Tickets + Comments (M4) ---
     resources :tickets, only: [:index, :show, :create, :update, :destroy] do
       resources :comments, only: [:index, :create]
+      resources :events, only: [:index], controller: "ticket_events"
     end
 
     # Comment edit/delete are addressed by their own id, not nested (M6 stretch).

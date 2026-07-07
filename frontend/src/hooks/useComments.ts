@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client.ts'
 import { addComment, deleteComment, listComments, updateComment } from '../api/comments.ts'
+import { ticketEventsQueryKey } from './useTicketEvents.ts'
 import { ticketQueryKey } from './useTickets.ts'
 import type { Comment, Ticket } from '../types/api.ts'
 
@@ -77,6 +78,7 @@ export function useAddComment(ticketId: string) {
       queryClient.setQueryData<Ticket>(ticketQueryKey(ticketId), (prev) =>
         prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev,
       )
+      void queryClient.invalidateQueries({ queryKey: ticketEventsQueryKey(ticketId) })
     },
   })
 }
@@ -97,6 +99,7 @@ export function useUpdateComment(ticketId: string) {
         (prev) =>
           prev?.map((c) => (c.id === updatedComment.id ? updatedComment : c)) ?? prev,
       )
+      void queryClient.invalidateQueries({ queryKey: ticketEventsQueryKey(ticketId) })
     },
   })
 }
@@ -122,6 +125,7 @@ export function useDeleteComment(ticketId: string) {
           ? { ...prev, comment_count: Math.max(0, prev.comment_count - 1) }
           : prev,
       )
+      void queryClient.invalidateQueries({ queryKey: ticketEventsQueryKey(ticketId) })
     },
   })
 }

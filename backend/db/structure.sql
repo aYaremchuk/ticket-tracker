@@ -1,6 +1,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -148,6 +149,22 @@ CREATE TABLE public.teams (
 
 
 --
+-- Name: ticket_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ticket_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    ticket_id uuid NOT NULL,
+    actor_id uuid NOT NULL,
+    action character varying NOT NULL,
+    field character varying,
+    old_value text,
+    new_value text,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: ticket_number_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -258,6 +275,14 @@ ALTER TABLE ONLY public.teams
 
 
 --
+-- Name: ticket_events ticket_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ticket_events
+    ADD CONSTRAINT ticket_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tickets tickets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -358,6 +383,20 @@ CREATE UNIQUE INDEX index_teams_on_name ON public.teams USING btree (name);
 
 
 --
+-- Name: index_ticket_events_on_actor_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ticket_events_on_actor_id ON public.ticket_events USING btree (actor_id);
+
+
+--
+-- Name: index_ticket_events_on_ticket_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ticket_events_on_ticket_id ON public.ticket_events USING btree (ticket_id);
+
+
+--
 -- Name: index_tickets_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -447,11 +486,27 @@ ALTER TABLE ONLY public.email_verification_tokens
 
 
 --
+-- Name: ticket_events fk_rails_4e1c086dd8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ticket_events
+    ADD CONSTRAINT fk_rails_4e1c086dd8 FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE CASCADE;
+
+
+--
 -- Name: sessions fk_rails_758836b4f0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ticket_events fk_rails_bf9df13ca0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ticket_events
+    ADD CONSTRAINT fk_rails_bf9df13ca0 FOREIGN KEY (actor_id) REFERENCES public.users(id) ON DELETE RESTRICT;
 
 
 --
@@ -485,6 +540,7 @@ ALTER TABLE ONLY public.tickets
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260707100001'),
 ('20260706200001'),
 ('20260706190002'),
 ('20260706190001'),

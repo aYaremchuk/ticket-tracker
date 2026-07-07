@@ -474,8 +474,11 @@ RSpec.describe("Api::Tickets", type: :request) do
             "created_by",
             "created_at",
             "modified_at",
+            "modified_by",
             "comment_count",
           ))
+          # Never edited → last modifier is the creator.
+          expect(body.dig("modified_by", "id")).to(eq(user.id))
         end
       end
 

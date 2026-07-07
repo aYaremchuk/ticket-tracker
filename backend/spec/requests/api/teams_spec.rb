@@ -321,6 +321,23 @@ RSpec.describe("Api::Teams", type: :request) do
             expect(response.parsed_body.dig("error", "code")).to(eq("team_has_references"))
           end
         end
+
+        response "409", "team has tickets — delete is blocked" do
+          let!(:existing_team) { create(:team) }
+          let(:id) { existing_team.id }
+
+          before do
+            create(:ticket, team: existing_team, created_by: user)
+          end
+
+          let(:_headers) { login_and_csrf_headers }
+          let(:Origin) { _headers["Origin"] }
+          let(:"X-CSRF-Token") { _headers["X-CSRF-Token"] }
+
+          run_test! do |response|
+            expect(response.parsed_body.dig("error", "code")).to(eq("team_has_references"))
+          end
+        end
       end
     end
   end

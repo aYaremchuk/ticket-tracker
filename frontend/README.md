@@ -20,12 +20,16 @@ client sends `credentials: 'include'` and an `X-CSRF-Token` header on writes.
 
 ## Run
 
-### Standalone dev server (hot reload) — http://localhost:5173
+### Run this app on its own (hot reload) — http://localhost:5173
+The SPA runs independently of the backend build — it only needs the API
+reachable at `http://localhost:3000`.
 ```bash
 npm install
-npm run dev        # Vite proxies /api → http://localhost:3000
+npm run dev        # Vite dev server; proxies /api → http://localhost:3000
 ```
-Point it at a running API (`docker compose up db api`, or the backend standalone).
+Start the API separately first: `docker compose up db api` (or run the backend
+standalone per `backend/README.md`). The Vite proxy keeps the browser
+same-origin, so cookie auth + CSRF work exactly like production.
 
 ### Production build
 ```bash

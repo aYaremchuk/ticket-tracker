@@ -38,15 +38,23 @@ docker compose up api            # just this service (needs db)
 The container entrypoint waits for Postgres, runs `db:prepare` (migrate, **no
 seed**), then boots Puma on port 3000.
 
-### Standalone (host Ruby)
+### Run this app on its own (host Ruby)
+The API runs independently of the SPA — it only needs a PostgreSQL database.
 ```bash
 bundle install
-DATABASE_HOST=localhost bin/rails db:prepare
-DATABASE_HOST=localhost bin/rails s -p 3000
+DATABASE_HOST=localhost bin/rails db:prepare      # create + migrate (no seed)
+DATABASE_HOST=localhost bin/rails s -p 3000       # → http://localhost:3000
 ```
-Requires a reachable PostgreSQL (`docker compose up db` is the easiest source).
+Easiest DB source: `docker compose up db` (published on localhost:5432).
 Connection + SMTP settings come from environment variables — see the root
-`.env.example`.
+`.env.example`. In development, verification emails are captured at
+**http://localhost:3000/letter_opener** (no SMTP server needed).
+
+Run the test suite standalone:
+```bash
+RAILS_ENV=test DATABASE_HOST=localhost bin/rails db:prepare
+RAILS_ENV=test DATABASE_HOST=localhost bundle exec rspec   # + rubocop / brakeman
+```
 
 ## Health
 

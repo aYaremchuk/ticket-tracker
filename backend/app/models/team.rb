@@ -5,14 +5,12 @@
 # validation so " Payments " and "payments" are treated the same.
 #
 # Reference checks:
-#   DELETE raises ActiveRecord::DeleteRestrictionError when the team still has
+#   DELETE raises ActiveRecord::RecordNotDestroyed when the team still has
 #   epics (M3) or tickets (M4), which TeamsController rescues and maps to
 #   409 team_has_references.
-#
-#   TODO (M4): uncomment the tickets association once that table exists.
-#   has_many :tickets, dependent: :restrict_with_error
 class Team < ApplicationRecord
-  has_many :epics, dependent: :restrict_with_error
+  has_many :epics,   dependent: :restrict_with_error
+  has_many :tickets, dependent: :restrict_with_error
 
   before_validation :strip_name
 
@@ -26,15 +24,13 @@ class Team < ApplicationRecord
   end
 
   # Returns the number of tickets belonging to this team.
-  # TODO: replace with `tickets.count` once the tickets table exists (M4).
   def ticket_count
-    0
+    tickets.count
   end
 
   # True when the team can be safely deleted (no referencing epics or tickets).
-  # TODO (M4): also check ticket_count.zero? once tickets table exists.
   def deletable?
-    epic_count.zero?
+    epic_count.zero? && ticket_count.zero?
   end
 
   private

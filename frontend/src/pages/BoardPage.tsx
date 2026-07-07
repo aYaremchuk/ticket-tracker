@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { CountBadge, TypeBadge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
+import { Button, LinkButton } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Select } from '../components/ui/Select'
 import { TextInput } from '../components/ui/TextInput'
@@ -17,7 +17,7 @@ export function BoardPage() {
           <option value="mobile">Mobile Apps</option>
           <option value="internal">Internal Tools</option>
         </Select>
-        <Button>+ New ticket</Button>
+        <LinkButton to="/tickets/new">+ New ticket</LinkButton>
       </div>
 
       <Card className="p-4">

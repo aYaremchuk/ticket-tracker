@@ -4,6 +4,8 @@ module Api
   # Public health/readiness endpoint. Reports app liveness and DB connectivity.
   # Intentionally requires no authentication (see spec §3, §9).
   class HealthController < ApplicationController
+    allow_unauthenticated_access
+
     def show
       db_ok =
         begin

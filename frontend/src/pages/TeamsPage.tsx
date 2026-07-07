@@ -8,8 +8,8 @@ import { mockTeams } from '../data/mock'
 const DELETE_NOTE = 'Delete is disabled while a team contains tickets or epics.'
 
 export function TeamsPage() {
-  // Open by default so the static prototype matches the wireframe.
-  const [createOpen, setCreateOpen] = useState(true)
+  // Closed by default; opens when the user clicks "+ Create team".
+  const [createOpen, setCreateOpen] = useState(false)
 
   return (
     <div>

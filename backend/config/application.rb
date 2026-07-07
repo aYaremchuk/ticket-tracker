@@ -40,5 +40,12 @@ module Backend
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Cookie-based auth needs the cookies middleware, which api_only mode omits.
+    # Add it back so signed HttpOnly session cookies (and the readable CSRF
+    # cookie) are serialized to Set-Cookie headers. We deliberately do NOT add
+    # the session-store middleware — sessions are server-side (Session model),
+    # not cookie-store.
+    config.middleware.use ActionDispatch::Cookies
   end
 end

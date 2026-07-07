@@ -1,0 +1,228 @@
+---
+openapi: 3.0.1
+info:
+  title: Ticket Tracker API
+  version: v1
+  description: Authentication (M1) endpoints. Session is a signed HttpOnly SameSite=Lax
+    cookie; writes require an X-CSRF-Token header matching the csrf_token cookie plus
+    a permitted Origin.
+paths:
+  "/api/csrf":
+    get:
+      summary: Fetch a CSRF token
+      tags:
+      - Auth
+      description: Returns a CSRF token and sets it as a readable SameSite=Lax cookie.
+        The SPA echoes it in X-CSRF-Token on writes (double-submit).
+      responses:
+        '200':
+          description: csrf token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrf_token:
+                    type: string
+                required:
+                - csrf_token
+  "/api/login":
+    post:
+      summary: Log in and establish a session
+      tags:
+      - Auth
+      description: Verifies the Argon2id password and email-verified status. On success
+        sets a signed HttpOnly SameSite=Lax session cookie.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: login succeeds and sets the session cookie
+        '401':
+          description: unknown email
+        '403':
+          description: email not verified
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+              - email
+              - password
+  "/api/logout":
+    delete:
+      summary: Log out and destroy the session
+      tags:
+      - Auth
+      security:
+      - session_cookie: []
+      description: Destroys the current server-side session and clears the cookie.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      responses:
+        '204':
+          description: logged out
+        '401':
+          description: no active session
+  "/api/me":
+    get:
+      summary: Return the current authenticated user
+      tags:
+      - Auth
+      security:
+      - session_cookie: []
+      description: Restores session state on app load. 401 if there is no session.
+      responses:
+        '200':
+          description: returns the current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+                required:
+                - id
+                - email
+        '401':
+          description: no session
+        '403':
+          description: session belongs to an unverified user
+  "/api/resend_verification":
+    post:
+      summary: Resend the verification email
+      tags:
+      - Auth
+      description: Invalidates prior unused tokens and issues a new one for an unverified
+        account. Always returns 202 (no account enumeration).
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      responses:
+        '202':
+          description: already-verified email — still 202, no email sent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required:
+              - email
+  "/api/signup":
+    post:
+      summary: Register a new (unverified) account
+      tags:
+      - Auth
+      description: Creates an unverified user, issues a 24h single-use verification
+        token, and emails a verification link. Requires a CSRF token (GET /api/csrf)
+        and a permitted Origin.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      responses:
+        '201':
+          description: email is trimmed and lower-cased
+        '422':
+          description: invalid email
+        '409':
+          description: email already registered (case-insensitive)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: a@b.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: password123
+              required:
+              - email
+              - password
+  "/api/verify_email":
+    post:
+      summary: Verify an email address with a token
+      tags:
+      - Auth
+      description: Consumes a valid, unexpired, unconsumed token and marks the user
+        verified. Expired/used/invalid tokens return 410 token_invalid.
+      parameters:
+      - name: Origin
+        in: header
+        schema:
+          type: string
+      - name: X-CSRF-Token
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: email verified
+        '410':
+          description: unknown/invalid token
+        '422':
+          description: missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+              required:
+              - token
+components:
+  securitySchemes:
+    session_cookie:
+      type: apiKey
+      in: cookie
+      name: session
+servers:
+- url: "{scheme}://{host}"
+  variables:
+    scheme:
+      default: http
+    host:
+      default: localhost:8080

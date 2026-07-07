@@ -1,8 +1,45 @@
-# Omakase Ruby styling for Rails
-inherit_gem: { rubocop-rails-omakase: rubocop.yml }
+# House style: Shopify's Ruby style guide, plus Rails and RSpec cops.
+inherit_gem:
+  rubocop-shopify: rubocop.yml
 
-# Overwrite or add rules to create your own house style
-#
-# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
-# Layout/SpaceInsideArrayLiteralBrackets:
-#   Enabled: false
+plugins:
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: enable
+  Exclude:
+    - "bin/**/*"
+    - "db/schema.rb"
+    - "config/**/*"
+    - "vendor/**/*"
+    - "tmp/**/*"
+    - "storage/**/*"
+    - "node_modules/**/*"
+
+# rswag request specs use a path/response DSL that trips several RSpec cops
+# designed for plain example groups. They are documented as OpenAPI specs, so
+# relax the noisiest ones here rather than annotating every file.
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Max: 5
+
+# `def self.foo` reads more clearly than `class << self` for the small set of
+# factory/query class methods on these models; keep the conventional form.
+Style/ClassMethodsDefinitions:
+  Enabled: false
+
+# update_all is used deliberately to bulk-invalidate prior verification tokens
+# (a set-based state change with no callbacks needed); the warning is expected.
+Rails/SkipsModelValidations:
+  Enabled: false
+
+# A single transactional mailer subject does not warrant an i18n locale file.
+Rails/I18nLocaleTexts:
+  Enabled: false

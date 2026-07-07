@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   # Public health/readiness endpoint. Reports app liveness and DB connectivity.
   # Intentionally requires no authentication (see spec §3, §9).
@@ -11,12 +13,15 @@ module Api
           false
         end
 
-      render json: {
-        status: db_ok ? "ok" : "degraded",
-        service: "task_managing_system-api",
-        database: db_ok ? "up" : "down",
-        time: Time.now.utc.iso8601,
-      }, status: db_ok ? :ok : :service_unavailable
+      render(
+        json: {
+          status: db_ok ? "ok" : "degraded",
+          service: "task_managing_system-api",
+          database: db_ok ? "up" : "down",
+          time: Time.now.utc.iso8601,
+        },
+        status: db_ok ? :ok : :service_unavailable,
+      )
     end
   end
 end

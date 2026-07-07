@@ -53,7 +53,7 @@ module Api
     end
 
     def show
-      render(json: TicketSerializer.call(@ticket), status: :ok)
+      render(json: TicketSerializer.call(@ticket, include_modified_by: true), status: :ok)
     end
 
     def create
@@ -68,7 +68,7 @@ module Api
       ticket = Ticket.new(create_params.merge(created_by: Current.user))
 
       if ticket.save
-        render(json: TicketSerializer.call(ticket), status: :created)
+        render(json: TicketSerializer.call(ticket, include_modified_by: true), status: :created)
       else
         render_ticket_errors(ticket)
       end
@@ -84,7 +84,7 @@ module Api
       end
 
       if @ticket.update(update_params)
-        render(json: TicketSerializer.call(@ticket), status: :ok)
+        render(json: TicketSerializer.call(@ticket, include_modified_by: true), status: :ok)
       else
         render_ticket_errors(@ticket)
       end

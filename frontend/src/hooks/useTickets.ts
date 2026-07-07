@@ -18,6 +18,7 @@ import {
   listTickets,
   updateTicket,
 } from '../api/tickets.ts'
+import { ticketEventsQueryKey } from './useTicketEvents.ts'
 import type {
   Ticket,
   TicketCreateRequest,
@@ -107,6 +108,7 @@ export function useUpdateTicket(id: string) {
     onSuccess: (updated) => {
       queryClient.setQueryData(ticketQueryKey(id), updated)
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      void queryClient.invalidateQueries({ queryKey: ticketEventsQueryKey(id) })
     },
   })
 }
@@ -170,6 +172,7 @@ export function useUpdateTicketState(
     onSuccess: (updated, { id }) => {
       // Keep the detail-page cache consistent with the new state.
       queryClient.setQueryData(ticketQueryKey(id), updated)
+      void queryClient.invalidateQueries({ queryKey: ticketEventsQueryKey(id) })
     },
 
     onSettled: () => {
@@ -186,6 +189,7 @@ export function useDeleteTicket(id: string) {
     mutationFn: () => deleteTicket(id),
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ticketQueryKey(id) })
+      queryClient.removeQueries({ queryKey: ticketEventsQueryKey(id) })
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })

@@ -11,6 +11,13 @@ class UserMailer < ApplicationMailer
     mail(to: user.email, subject: "Verify your email")
   end
 
+  def password_reset_email(user, raw_token)
+    @user = user
+    @reset_url = "#{app_base_url}/reset-password?token=#{raw_token}"
+
+    mail(to: user.email, subject: "Reset your password")
+  end
+
   private
 
   def app_base_url

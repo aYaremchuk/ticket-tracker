@@ -6,8 +6,25 @@
 class User < ApplicationRecord
   MIN_PASSWORD_LENGTH = 8
 
+  # A fixed Argon2id digest verified against when the email is unknown, so a
+  # failed login costs the same wall-clock time whether or not the account
+  # exists (no timing-based account enumeration). Value is irrelevant; it just
+  # needs to be a real Argon2id hash so verification does the full work.
+  DECOY_PASSWORD_DIGEST = Argon2::Password.create("decoy-password-for-timing").freeze
+
+  # Runs a full Argon2id verification against the decoy digest and always
+  # returns false. Callers use this on the unknown-email path so timing does
+  # not reveal whether an account exists.
+  def self.waste_password_comparison(raw)
+    Argon2::Password.verify_password(raw.to_s, DECOY_PASSWORD_DIGEST)
+    false
+  rescue Argon2::Errors::InvalidHash
+    false
+  end
+
   has_many :sessions, dependent: :destroy
   has_many :email_verification_tokens, dependent: :destroy
+  has_many :password_reset_tokens, dependent: :destroy
 
   # Normalize before validation so uniqueness/format checks see the trimmed,
   # lower-cased form. The DB column is citext, so this is defense in depth.

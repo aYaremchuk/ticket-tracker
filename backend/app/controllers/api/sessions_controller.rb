@@ -10,7 +10,17 @@ module Api
     def create
       user = User.find_by(email: params[:email].to_s.strip.downcase)
 
-      unless user&.authenticate(params[:password].to_s)
+      # When the email is unknown, still perform a full Argon2 verification
+      # against a decoy digest so response timing does not reveal whether the
+      # account exists. The generic invalid_credentials error is returned either
+      # way.
+      authenticated = if user
+        user.authenticate(params[:password].to_s)
+      else
+        User.waste_password_comparison(params[:password].to_s)
+      end
+
+      unless authenticated
         return render_error(
           code: "invalid_credentials",
           message: "Invalid email or password",

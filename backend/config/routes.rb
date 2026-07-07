@@ -25,6 +25,10 @@ Rails.application.routes.draw do
     delete "logout" => "sessions#destroy"
     get "me" => "current_user#show"
 
+    # --- Password reset (M6 stretch) ---
+    post "password_reset" => "password_resets#create"
+    post "password_reset/confirm" => "password_resets#confirm"
+
     # --- Teams (M2) ---
     resources :teams, only: [:index, :create, :update, :destroy]
 
@@ -35,5 +39,8 @@ Rails.application.routes.draw do
     resources :tickets, only: [:index, :show, :create, :update, :destroy] do
       resources :comments, only: [:index, :create]
     end
+
+    # Comment edit/delete are addressed by their own id, not nested (M6 stretch).
+    resources :comments, only: [:update, :destroy]
   end
 end

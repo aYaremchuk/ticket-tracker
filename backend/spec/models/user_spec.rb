@@ -58,6 +58,17 @@ RSpec.describe(User, type: :model) do
     end
   end
 
+  describe ".waste_password_comparison (timing decoy)" do
+    it "always returns false but runs a full Argon2 verification" do
+      expect(described_class::DECOY_PASSWORD_DIGEST).to(start_with("$argon2id$"))
+      # Must actually invoke Argon2 verification so the unknown-email login path
+      # costs the same as a real one (no timing enumeration).
+      allow(Argon2::Password).to(receive(:verify_password).and_call_original)
+      expect(described_class.waste_password_comparison("anything")).to(be(false))
+      expect(Argon2::Password).to(have_received(:verify_password))
+    end
+  end
+
   describe "#verified? / #verify!" do
     it "is unverified until verify! is called" do
       user = create(:user, :unverified)

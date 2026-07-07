@@ -67,9 +67,20 @@ module RequestForgeryProtection
     request_origin ||= referer_origin
     allowed = allowed_origins
 
-    # If no allowlist is configured (e.g. bare test setups) we cannot enforce
-    # this layer; the CSRF token + SameSite still apply.
-    return if allowed.empty?
+    # Fail CLOSED in production: if no allowlist is configured (APP_BASE_URL /
+    # CORS_ORIGINS unset) we must NOT wave the request through — a misconfigured
+    # prod deploy would otherwise disable the Origin check entirely. Outside
+    # production we allow it through (bare dev/test setups) since the CSRF token
+    # + SameSite cookie still apply.
+    if allowed.empty?
+      return unless Rails.env.production?
+
+      return render_error(
+        code: "origin_forbidden",
+        message: "Request origin is not allowed",
+        status: :forbidden,
+      )
+    end
 
     if request_origin.blank? || allowed.exclude?(normalize_origin(request_origin))
       render_error(

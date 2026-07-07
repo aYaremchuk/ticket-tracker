@@ -59,4 +59,40 @@ RSpec.describe("CSRF / Origin protection", type: :request) do
     get "/api/health"
     expect(response).to(have_http_status(:ok))
   end
+
+  describe "fail-closed when no allowlist is configured" do
+    around do |example|
+      original = ENV["APP_BASE_URL"]
+      original_cors = ENV["CORS_ORIGINS"]
+      example.run
+      ENV["APP_BASE_URL"] = original
+      ENV["CORS_ORIGINS"] = original_cors
+    end
+
+    # Runs AFTER the global auth-helper before-hook (which sets APP_BASE_URL), so
+    # the allowlist is genuinely empty for these examples.
+    before do
+      ENV.delete("APP_BASE_URL")
+      ENV.delete("CORS_ORIGINS")
+    end
+
+    it "still allows the write outside production (dev/test convenience)" do
+      token = fetch_csrf
+      post "/api/signup",
+        params: payload,
+        headers: json.merge("Origin" => allowed_origin, "X-CSRF-Token" => token)
+      # Not blocked by the Origin layer (empty allowlist, non-production).
+      expect(response).to(have_http_status(:created))
+    end
+
+    it "blocks the write in production (fail closed, 403 origin_forbidden)" do
+      allow(Rails).to(receive(:env).and_return(ActiveSupport::StringInquirer.new("production")))
+      token = fetch_csrf
+      post "/api/signup",
+        params: payload,
+        headers: json.merge("Origin" => allowed_origin, "X-CSRF-Token" => token)
+      expect(response).to(have_http_status(:forbidden))
+      expect(response.parsed_body.dig("error", "code")).to(eq("origin_forbidden"))
+    end
+  end
 end

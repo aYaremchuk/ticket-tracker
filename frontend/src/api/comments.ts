@@ -26,3 +26,21 @@ export async function addComment(
 ): Promise<Comment> {
   return request<Comment>('POST', `/tickets/${ticketId}/comments`, { body })
 }
+
+/**
+ * PATCH /api/comments/:id { body } → 200 Comment.
+ * Author-only (403 forbidden otherwise). Throws ApiError on 422 (blank body).
+ * Does NOT bump the ticket's modified_at.
+ */
+export async function updateComment(id: string, body: string): Promise<Comment> {
+  return request<Comment>('PATCH', `/comments/${id}`, { body })
+}
+
+/**
+ * DELETE /api/comments/:id → 204.
+ * Author-only (403 forbidden otherwise).
+ * Does NOT bump the ticket's modified_at.
+ */
+export async function deleteComment(id: string): Promise<void> {
+  return request<void>('DELETE', `/comments/${id}`)
+}

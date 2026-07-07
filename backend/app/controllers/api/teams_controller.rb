@@ -66,9 +66,9 @@ module Api
     def destroy
       @team.destroy!
       head(:no_content)
-    rescue ActiveRecord::DeleteRestrictionError
-      # Raised by `dependent: :restrict_with_error` when the team still has
-      # referencing epics or tickets (wired up in M3/M4).
+    rescue ActiveRecord::RecordNotDestroyed
+      # Raised by destroy! when `dependent: :restrict_with_error` blocks deletion
+      # (i.e. the team still has referencing epics (M3) or tickets (M4)).
       render_error(
         code: "team_has_references",
         message: "Team has associated epics or tickets and cannot be deleted",

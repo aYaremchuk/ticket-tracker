@@ -305,21 +305,22 @@ RSpec.describe("Api::Teams", type: :request) do
           end
         end
 
-        # NOTE: 409 team_has_references cannot be exercised yet. The epics/tickets
-        # tables are added in M3/M4. The rescue in TeamsController#destroy is
-        # already wired and ready. Enable this example once those tables exist:
-        #
-        # response "409", "team has epics or tickets" do
-        #   before do
-        #     create(:epic, team: existing_team)
-        #     login_and_csrf_headers
-        #   end
-        #   let!(:existing_team) { create(:team) }
-        #   let(:id) { existing_team.id }
-        #   run_test! do |response|
-        #     expect(response.parsed_body.dig("error", "code")).to eq("team_has_references")
-        #   end
-        # end
+        response "409", "team has epics — delete is blocked" do
+          let!(:existing_team) { create(:team) }
+          let(:id) { existing_team.id }
+
+          before do
+            create(:epic, team: existing_team)
+          end
+
+          let(:_headers) { login_and_csrf_headers }
+          let(:Origin) { _headers["Origin"] }
+          let(:"X-CSRF-Token") { _headers["X-CSRF-Token"] }
+
+          run_test! do |response|
+            expect(response.parsed_body.dig("error", "code")).to(eq("team_has_references"))
+          end
+        end
       end
     end
   end

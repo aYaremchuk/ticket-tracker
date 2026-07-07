@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_06_170001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_06_180001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -26,6 +26,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_170001) do
     t.index ["token_digest"], name: "index_email_verification_tokens_on_token_digest", unique: true
     t.index ["user_id", "consumed_at"], name: "index_email_verification_tokens_on_user_id_and_consumed_at"
     t.index ["user_id"], name: "index_email_verification_tokens_on_user_id"
+  end
+
+  create_table "epics", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.uuid "team_id", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["team_id"], name: "index_epics_on_team_id"
   end
 
   create_table "sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -56,5 +65,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_170001) do
   end
 
   add_foreign_key "email_verification_tokens", "users", on_delete: :cascade
+  add_foreign_key "epics", "teams", on_delete: :restrict
   add_foreign_key "sessions", "users", on_delete: :cascade
 end

@@ -13,8 +13,6 @@ module Api
   class EpicsController < ApplicationController
     before_action :set_epic, only: [:update, :destroy]
 
-    # GET /api/epics?team_id=<uuid>
-    # team_id is required — the board/epic screens are always team-scoped.
     def index
       team_id = params[:team_id]
       if team_id.blank?
@@ -25,11 +23,9 @@ module Api
         )
       end
 
-      # 404 if team does not exist
       team = Team.find(team_id)
       epics = team.epics.order(:title)
 
-      # Precompute ticket counts in a single grouped query to avoid N+1.
       ticket_counts = Ticket.where(epic_id: epics.map(&:id))
         .group(:epic_id).count
 
@@ -43,7 +39,6 @@ module Api
       )
     end
 
-    # POST /api/epics
     def create
       team = Team.find(create_params[:team_id])
       epic = team.epics.new(title: create_params[:title], description: create_params[:description])
@@ -57,9 +52,6 @@ module Api
       render_error(code: "not_found", message: "Team not found", status: :not_found)
     end
 
-    # PATCH /api/epics/:id
-    # team_id is immutable — attr_readonly on the model silently discards it
-    # even if the client sends it. We only permit title and description here.
     def update
       if @epic.update(update_params)
         render(json: EpicSerializer.call(@epic), status: :ok)
@@ -68,7 +60,6 @@ module Api
       end
     end
 
-    # DELETE /api/epics/:id
     def destroy
       @epic.destroy!
       head(:no_content)

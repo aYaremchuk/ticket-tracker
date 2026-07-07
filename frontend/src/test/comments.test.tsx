@@ -1,5 +1,5 @@
 /**
- * Comment edit/delete (M6) — own-comment-only controls in TicketDetailPage.
+ * Comment edit/delete — own-comment-only controls in TicketDetailPage.
  *
  * Covered:
  * - Own comment → Edit and Delete controls visible

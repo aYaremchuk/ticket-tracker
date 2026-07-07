@@ -1,5 +1,5 @@
 /**
- * Board (M5) — integration tests.
+ * Board — integration tests.
  *
  * Covered:
  * 1. Columns render from mocked tickets, grouped by state with count badges.

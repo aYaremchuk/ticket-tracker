@@ -1,12 +1,12 @@
 /**
  * TanStack Query hooks for the Tickets resource.
  *
- * Server state (single ticket + mutations) lives here. The board list (M5)
+ * Server state (single ticket + mutations) lives here. The board list
  * will use separate query keys. Comments are in useComments.ts.
  *
  * Cache key shapes:
  *   ['ticket', id]         — single ticket detail
- *   ['tickets']            — list (invalidated on create/delete for board M5)
+ *   ['tickets']            — list (invalidated on create/delete)
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -26,10 +26,6 @@ import type {
   TicketUpdateRequest,
 } from '../types/api.ts'
 
-// ---------------------------------------------------------------------------
-// Query key factories
-// ---------------------------------------------------------------------------
-
 export const ticketQueryKey = (id: string) => ['ticket', id] as const
 export const ticketsListQueryKey = (filters?: Partial<TicketFilters>) =>
   filters ? (['tickets', filters] as const) : (['tickets'] as const)
@@ -39,10 +35,6 @@ export interface TicketsListResponse {
   tickets: Ticket[]
   total: number
 }
-
-// ---------------------------------------------------------------------------
-// Error helper
-// ---------------------------------------------------------------------------
 
 /**
  * Map a thrown error to a human-readable display string.
@@ -68,10 +60,6 @@ export function friendlyTicketsError(err: unknown): string {
   return 'An unexpected error occurred. Please try again.'
 }
 
-// ---------------------------------------------------------------------------
-// Queries
-// ---------------------------------------------------------------------------
-
 /** Fetches a single ticket by UUID. Disabled when id is empty. */
 export function useTicket(id: string | undefined) {
   return useQuery<Ticket, Error>({
@@ -82,7 +70,7 @@ export function useTicket(id: string | undefined) {
 }
 
 /**
- * Fetches the ticket list with optional filters. Used by the board (M5).
+ * Fetches the ticket list with optional filters. Used by the board.
  * `placeholderData` keeps the previous page of tickets on screen while a new
  * filter combination fetches — no skeleton flash on every keystroke/filter.
  */
@@ -98,10 +86,6 @@ export function useTickets(
   })
 }
 
-// ---------------------------------------------------------------------------
-// Mutations
-// ---------------------------------------------------------------------------
-
 /** Create a ticket. On success, invalidates the tickets list. */
 export function useCreateTicket() {
   const queryClient = useQueryClient()
@@ -109,7 +93,6 @@ export function useCreateTicket() {
   return useMutation<Ticket, Error, TicketCreateRequest>({
     mutationFn: (data) => createTicket(data),
     onSuccess: () => {
-      // Invalidate all ticket list queries (board columns in M5).
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },
   })
@@ -122,7 +105,6 @@ export function useUpdateTicket(id: string) {
   return useMutation<Ticket, Error, TicketUpdateRequest>({
     mutationFn: (patch) => updateTicket(id, patch),
     onSuccess: (updated) => {
-      // Update the cached ticket directly to avoid a redundant refetch.
       queryClient.setQueryData(ticketQueryKey(id), updated)
       void queryClient.invalidateQueries({ queryKey: ['tickets'] })
     },

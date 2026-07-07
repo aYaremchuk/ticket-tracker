@@ -10,7 +10,6 @@ module Api
     # Public pre-auth endpoints: no session to forge, so CSRF adds only friction.
     skip_csrf_protection
 
-    # POST /api/password_reset { email } -> 202 always.
     def create
       user = User.find_by(email: params[:email].to_s.strip.downcase)
 
@@ -27,7 +26,6 @@ module Api
       )
     end
 
-    # POST /api/password_reset/confirm { token, password } -> 200 / 410 / 422.
     def confirm
       result = PasswordResetService.call(
         token: params[:token],

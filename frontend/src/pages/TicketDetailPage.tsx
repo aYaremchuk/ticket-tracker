@@ -1,5 +1,5 @@
 /**
- * Ticket detail + edit screen — M4.
+ * Ticket detail + edit screen.
  *
  * Layout (wireframe 3):
  *   - Back link to /board.

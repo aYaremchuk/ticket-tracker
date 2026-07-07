@@ -13,7 +13,6 @@ module Api
     before_action :set_comment, only: [:update, :destroy]
     before_action :require_author, only: [:update, :destroy]
 
-    # GET /api/tickets/:ticket_id/comments
     def index
       # Stable ordering: created_at then id so comments in the same second keep
       # a deterministic order.
@@ -21,7 +20,6 @@ module Api
       render(json: { comments: comments.map { |c| CommentSerializer.call(c) } }, status: :ok)
     end
 
-    # POST /api/tickets/:ticket_id/comments
     def create
       comment = @ticket.comments.new(body: comment_params[:body], author: Current.user)
 
@@ -32,7 +30,6 @@ module Api
       end
     end
 
-    # PATCH /api/comments/:id
     def update
       if @comment.update(body: comment_params[:body])
         render(json: CommentSerializer.call(@comment), status: :ok)
@@ -41,7 +38,6 @@ module Api
       end
     end
 
-    # DELETE /api/comments/:id
     def destroy
       @comment.destroy!
       head(:no_content)

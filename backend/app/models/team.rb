@@ -6,7 +6,7 @@
 #
 # Reference checks:
 #   DELETE raises ActiveRecord::RecordNotDestroyed when the team still has
-#   epics (M3) or tickets (M4), which TeamsController rescues and maps to
+#   epics or tickets, which TeamsController rescues and maps to
 #   409 team_has_references.
 class Team < ApplicationRecord
   has_many :epics,   dependent: :restrict_with_error

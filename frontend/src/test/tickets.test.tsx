@@ -1,5 +1,5 @@
 /**
- * Tickets screens — integration tests (M4).
+ * Tickets screens — integration tests
  *
  * Covered:
  * 1. Create success → navigates to /tickets/:id.

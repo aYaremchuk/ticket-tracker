@@ -24,5 +24,8 @@ Rails.application.routes.draw do
     post "login" => "sessions#create"
     delete "logout" => "sessions#destroy"
     get "me" => "current_user#show"
+
+    # --- Teams (M2) ---
+    resources :teams, only: [:index, :create, :update, :destroy]
   end
 end

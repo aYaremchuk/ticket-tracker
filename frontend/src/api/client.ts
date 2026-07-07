@@ -74,7 +74,7 @@ type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
 const MUTATING_METHODS: ReadonlySet<Method> = new Set(['POST', 'PATCH', 'DELETE'])
 
-async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',

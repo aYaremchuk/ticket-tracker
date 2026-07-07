@@ -5,6 +5,8 @@ module Api
   # verification email. Delegates business logic to SignupService.
   class RegistrationsController < ApplicationController
     allow_unauthenticated_access
+    # Public pre-auth endpoint: no session to forge, so CSRF adds only friction.
+    skip_csrf_protection
 
     def create
       result = SignupService.call(

@@ -2,17 +2,11 @@
 
 require "swagger_helper"
 
-# rubocop:disable RSpec/EmptyExampleGroup, RSpec/ScatteredSetup, RSpec/VariableName
+# rubocop:disable RSpec/EmptyExampleGroup, RSpec/ScatteredSetup
 RSpec.describe("Api::Signup", type: :request) do
-  # Fetch a CSRF token first (as the SPA does on load): drops the csrf_token
-  # cookie into the jar and exposes the value for the X-CSRF-Token header.
-  before do
-    ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN
-    get "/api/csrf"
-  end
-
-  let(:"X-CSRF-Token") { response.parsed_body["csrf_token"] }
-  let(:Origin) { AuthHelpers::ALLOWED_ORIGIN }
+  # Public pre-auth endpoint: CSRF-exempt (no session to forge). No CSRF token
+  # or Origin is required.
+  before { ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN }
 
   path "/api/signup" do
     post "Register a new (unverified) account" do
@@ -20,20 +14,18 @@ RSpec.describe("Api::Signup", type: :request) do
       consumes "application/json"
       produces "application/json"
       description "Creates an unverified user, issues a 24h single-use " \
-        "verification token, and emails a verification link. Requires a CSRF " \
-        "token (GET /api/csrf) and a permitted Origin."
+        "verification token, and emails a verification link. Public pre-auth " \
+        "endpoint — CSRF-exempt (no CSRF token or Origin required)."
       parameter name: :credentials, in: :body, schema: {
         type: :object,
         properties: {
-          email: { type: :string, example: "a@b.com" },
+          email: { type: :string, example: "user@example.com" },
           password: { type: :string, minLength: 8, example: "password123" },
         },
         required: ["email", "password"],
       }
-      parameter name: :Origin, in: :header, schema: { type: :string }
-      parameter name: "X-CSRF-Token", in: :header, schema: { type: :string }
 
-      response "201", "account created, verification email sent" do
+      response "201", "account created without a CSRF token (CSRF-exempt)" do
         let(:credentials) { { email: "new@example.com", password: "password123" } }
 
         run_test! do |response|
@@ -81,4 +73,4 @@ RSpec.describe("Api::Signup", type: :request) do
     end
   end
 end
-# rubocop:enable RSpec/EmptyExampleGroup, RSpec/ScatteredSetup, RSpec/VariableName
+# rubocop:enable RSpec/EmptyExampleGroup, RSpec/ScatteredSetup

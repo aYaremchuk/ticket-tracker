@@ -111,7 +111,7 @@ RSpec.describe("Api::Comments", type: :request) do
       description "Creates a comment. author = Current.user. Does NOT bump ticket modified_at."
       parameter name: :comment, in: :body, schema: {
         type: :object,
-        properties: { body: { type: :string } },
+        properties: { body: { type: :string, example: "Looks good to me." } },
         required: ["body"],
       }
       parameter name: "Origin", in: :header, schema: { type: :string }

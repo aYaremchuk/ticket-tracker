@@ -10,7 +10,9 @@ Rswag::Ui.configure do |c|
 
   c.swagger_endpoint '/api-docs/v1/swagger.yaml', 'API V1 Docs'
 
-  # Add Basic Auth in case your API is private
-  # c.basic_auth_enabled = true
-  # c.basic_auth_credentials 'username', 'password'
+  # Send cookies with "Try it out" requests. Our auth is a session cookie +
+  # CSRF double-submit cookie, so swagger-ui must issue credentialed requests
+  # (it does NOT by default) — otherwise every write fails with csrf_invalid and
+  # authenticated GETs 401.
+  c.config_object[:withCredentials] = true
 end

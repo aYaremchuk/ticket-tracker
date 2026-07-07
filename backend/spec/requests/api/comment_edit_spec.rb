@@ -37,7 +37,7 @@ RSpec.describe("Api::CommentEditDelete", type: :request) do
         "NOT bump the ticket's modified_at."
       parameter name: :comment, in: :body, schema: {
         type: :object,
-        properties: { body: { type: :string } },
+        properties: { body: { type: :string, example: "Looks good to me." } },
         required: ["body"],
       }
       parameter name: "Origin", in: :header, schema: { type: :string }

@@ -68,6 +68,18 @@ exactly like the nginx-served production setup.
   sign-up, login, email verification, resend, password reset, `/api/csrf`, and
   `/api/health`.
 
+## API documentation
+
+Interactive Swagger UI at **[http://localhost:8080/api-docs](http://localhost:8080/api-docs)**
+(OpenAPI generated from the request specs). The UI **and** the raw spec are
+protected by **HTTP Basic auth** whenever `SWAGGER_USER`/`SWAGGER_PASSWORD` are
+set — and always in production (fail-closed if unset). The dev compose defaults
+to **`docs` / `docs`**; clear both to open the docs in development.
+
+Endpoint auth uses cookies + CSRF (not bearer) — to test protected endpoints:
+`GET /api/csrf` → copy token → `POST /api/login` (paste token in `X-CSRF-Token`)
+→ then "Try it out" (paste the token on writes). See `backend/README.md`.
+
 ## Configuration
 
 All configuration is via environment variables — see `.env.example`. Never commit

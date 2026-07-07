@@ -283,11 +283,11 @@ RSpec.describe("Api::Tickets", type: :request) do
       parameter name: :ticket, in: :body, schema: {
         type: :object,
         properties: {
-          team_id: { type: :string, format: :uuid },
-          type: { type: :string, enum: ["bug", "feature", "fix"] },
-          title: { type: :string },
-          body: { type: :string },
-          epic_id: { type: :string, format: :uuid, nullable: true },
+          team_id: { type: :string, format: :uuid, example: "00000000-0000-0000-0000-000000000001" },
+          type: { type: :string, enum: ["bug", "feature", "fix"], example: "bug" },
+          title: { type: :string, example: "Login page crashes on Safari" },
+          body: { type: :string, example: "Steps to reproduce: open /login in Safari 17." },
+          epic_id: { type: :string, format: :uuid, nullable: true, example: "00000000-0000-0000-0000-000000000002" },
         },
         required: ["team_id", "type", "title", "body"],
       }
@@ -510,12 +510,12 @@ RSpec.describe("Api::Tickets", type: :request) do
       parameter name: :ticket, in: :body, schema: {
         type: :object,
         properties: {
-          type: { type: :string, enum: ["bug", "feature", "fix"] },
-          state: { type: :string },
-          title: { type: :string },
-          body: { type: :string },
-          team_id: { type: :string, format: :uuid },
-          epic_id: { type: :string, format: :uuid, nullable: true },
+          type: { type: :string, enum: ["bug", "feature", "fix"], example: "bug" },
+          state: { type: :string, example: "in_progress" },
+          title: { type: :string, example: "Login page crashes on Safari" },
+          body: { type: :string, example: "Steps to reproduce: open /login in Safari 17." },
+          team_id: { type: :string, format: :uuid, example: "00000000-0000-0000-0000-000000000001" },
+          epic_id: { type: :string, format: :uuid, nullable: true, example: "00000000-0000-0000-0000-000000000002" },
         },
       }
       parameter name: "Origin", in: :header, schema: { type: :string }

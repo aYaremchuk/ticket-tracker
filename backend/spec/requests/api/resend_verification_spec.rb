@@ -2,15 +2,11 @@
 
 require "swagger_helper"
 
-# rubocop:disable RSpec/EmptyExampleGroup, RSpec/VariableName
+# rubocop:disable RSpec/EmptyExampleGroup
 RSpec.describe("Api::ResendVerification", type: :request) do
-  before do
-    ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN
-    get "/api/csrf"
-  end
-
-  let(:"X-CSRF-Token") { response.parsed_body["csrf_token"] }
-  let(:Origin) { AuthHelpers::ALLOWED_ORIGIN }
+  # Public pre-auth endpoint: CSRF-exempt (no session to forge). No CSRF token
+  # or Origin required.
+  before { ENV["APP_BASE_URL"] = AuthHelpers::ALLOWED_ORIGIN }
 
   path "/api/resend_verification" do
     post "Resend the verification email" do
@@ -18,16 +14,15 @@ RSpec.describe("Api::ResendVerification", type: :request) do
       consumes "application/json"
       produces "application/json"
       description "Invalidates prior unused tokens and issues a new one for an " \
-        "unverified account. Always returns 202 (no account enumeration)."
+        "unverified account. Always returns 202 (no account enumeration). " \
+        "Public pre-auth endpoint — CSRF-exempt (no CSRF token or Origin required)."
       parameter name: :body, in: :body, schema: {
         type: :object,
-        properties: { email: { type: :string } },
+        properties: { email: { type: :string, example: "user@example.com" } },
         required: ["email"],
       }
-      parameter name: :Origin, in: :header, schema: { type: :string }
-      parameter name: "X-CSRF-Token", in: :header, schema: { type: :string }
 
-      response "202", "new verification email sent for an unverified account" do
+      response "202", "new verification email sent (no CSRF token required)" do
         let(:user) { create(:user, :unverified) }
         let!(:old_token) { EmailVerificationToken.issue!(user) }
         let(:body) { { email: user.email } }
@@ -60,4 +55,4 @@ RSpec.describe("Api::ResendVerification", type: :request) do
     end
   end
 end
-# rubocop:enable RSpec/EmptyExampleGroup, RSpec/VariableName
+# rubocop:enable RSpec/EmptyExampleGroup
